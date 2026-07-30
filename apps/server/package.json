@@ -9,7 +9,6 @@
     "check-types": "tsc"
   },
   "dependencies": {
-    "@effect-template/core": "workspace:*",
     "effect": "catalog:"
   }
 }

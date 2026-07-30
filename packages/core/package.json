@@ -8,8 +8,5 @@
   },
   "scripts": {
     "check-types": "tsc"
-  },
-  "dependencies": {
-    "effect": "catalog:"
   }
 }
