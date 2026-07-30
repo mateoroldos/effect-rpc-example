@@ -1,0 +1,8 @@
+node_modules
+.repos/effect
+dist
+.turbo
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
