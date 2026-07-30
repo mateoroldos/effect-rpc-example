@@ -3,12 +3,6 @@
   "workspaces": {
     ".": {
       "ignoreDependencies": ["@biomejs/biome"]
-    },
-    "apps/*": {
-      "includeEntryExports": true
-    },
-    "packages/*": {
-      "includeEntryExports": true
     }
   }
 }

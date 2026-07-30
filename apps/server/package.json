@@ -3,12 +3,21 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": "./src/index.ts",
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts",
     "check-types": "tsc"
   },
   "dependencies": {
+    "@effect-template/core": "workspace:*",
+    "@effect-template/database": "workspace:*",
+    "@effect-template/rpc": "workspace:*",
+    "@effect/platform-bun": "4.0.0-beta.102",
+    "@effect/sql-pg": "4.0.0-beta.102",
     "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@effect/platform-node": "4.0.0-beta.102"
   }
 }

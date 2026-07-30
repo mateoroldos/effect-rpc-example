@@ -26,6 +26,35 @@
     "noErrorTruncation": true,
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
-    "plugins": [{ "name": "@effect/language-service" }]
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        "diagnosticSeverity": {
+          "strictEffectProvide": "error",
+          "leakingRequirements": "error",
+          "extendsNativeError": "error",
+          "unsafeEffectTypeAssertion": "error",
+          "cryptoRandomUUID": "error",
+          "cryptoRandomUUIDInEffect": "error",
+          "duplicatePackage": "error",
+          "globalDate": "error",
+          "globalDateInEffect": "error",
+          "globalRandom": "error",
+          "globalRandomInEffect": "error",
+          "processEnv": "error",
+          "processEnvInEffect": "error",
+          "globalTimers": "error",
+          "globalTimersInEffect": "error",
+          "globalFetch": "error",
+          "globalFetchInEffect": "error",
+          "globalConsole": "error",
+          "globalConsoleInEffect": "error",
+          "newPromise": "error",
+          "asyncFunction": "error",
+          "nodeBuiltinImport": "warning",
+          "preferSchemaOverJson": "warning"
+        }
+      }
+    ]
   }
 }

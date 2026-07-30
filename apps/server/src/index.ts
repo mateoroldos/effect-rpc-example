@@ -1,9 +1,6 @@
-import { Effect } from "effect";
+import { BunRuntime } from "@effect/platform-bun";
+import { Layer } from "effect";
 
-/**
- * Server entrypoint. Empty on purpose — no HTTP framework, services, or
- * layers yet. Just proves the Effect runtime boots.
- */
-const main = Effect.log("effect-template server — nothing here yet");
+import { appLayer } from "./app-layer.ts";
 
-Effect.runPromise(main);
+BunRuntime.runMain(Layer.launch(appLayer));

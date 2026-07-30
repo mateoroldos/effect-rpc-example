@@ -1,17 +1,17 @@
 {
-  "name": "@effect-template/core",
+  "name": "@effect-template/rpc",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "exports": {
-    "./agent": "./src/agent/agent.ts",
-    "./agent-directory": "./src/agent-directory/agent-directory.ts",
-    "./agent-directory/store": "./src/agent-directory/agent-store.ts"
+    "./agents": "./src/agents/agents-rpc.ts",
+    "./agents/server": "./src/agents/agents-rpc-server.ts"
   },
   "scripts": {
     "check-types": "tsc"
   },
   "dependencies": {
+    "@effect-template/core": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

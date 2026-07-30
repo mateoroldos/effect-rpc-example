@@ -1,0 +1,26 @@
+{
+  "name": "@effect-template/database",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./postgres": "./src/postgres.ts",
+    "./agents/postgres": "./src/agents/agent-store-postgres.ts"
+  },
+  "scripts": {
+    "check-types": "tsc",
+    "db:generate": "drizzle-kit generate"
+  },
+  "dependencies": {
+    "@effect-template/core": "workspace:*",
+    "@effect/sql-pg": "4.0.0-beta.102",
+    "drizzle-orm": "1.0.0-rc.4",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@effect/sql-pglite": "4.0.0-beta.102",
+    "@electric-sql/pglite": "^0.5.4",
+    "@types/bun": "catalog:",
+    "drizzle-kit": "1.0.0-rc.4"
+  }
+}
