@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts",
+    "db:migrate": "bun run src/migrate.ts",
     "check-types": "tsc"
   },
   "dependencies": {
@@ -14,7 +15,6 @@
     "@effect-template/database": "workspace:*",
     "@effect-template/rpc": "workspace:*",
     "@effect/platform-bun": "4.0.0-beta.102",
-    "@effect/sql-pg": "4.0.0-beta.102",
     "effect": "catalog:"
   },
   "devDependencies": {

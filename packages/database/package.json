@@ -15,12 +15,14 @@
     "@effect-template/core": "workspace:*",
     "@effect/sql-pg": "4.0.0-beta.102",
     "drizzle-orm": "1.0.0-rc.4",
-    "effect": "catalog:"
+    "effect": "catalog:",
+    "pg": "^8.22.0"
   },
   "devDependencies": {
     "@effect/sql-pglite": "4.0.0-beta.102",
     "@electric-sql/pglite": "^0.5.4",
     "@types/bun": "catalog:",
+    "@types/pg": "^8.20.3",
     "drizzle-kit": "1.0.0-rc.4"
   }
 }
