@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     "./agents": "./src/agents/agents-rpc.ts",
-    "./agents/server": "./src/agents/agents-rpc-server.ts"
+    "./agents/server": "./src/agents/agents-rpc-server.ts",
+    "./rpc": "./src/rpc.ts"
   },
   "scripts": {
     "check-types": "tsc"

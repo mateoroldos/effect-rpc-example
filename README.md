@@ -30,7 +30,8 @@ database ─→ core ←─ rpc
 | `packages/core` | Domain types, application services, and the ports they depend on. |
 | `packages/database` | PostgreSQL lifecycle and adapters implementing core ports. |
 | `packages/rpc` | Transport-independent RPC contracts and their handlers. |
-| `apps/server` | Composition root — provides every Layer and launches the process. |
+| `apps/server` | Composition root — provides every Layer and launches the API process. |
+| `apps/web` | SvelteKit UI — remote functions call the typed Agents RPC server-side. |
 
 The composition root wires the graph in one place, and Effect memoizes shared
 infrastructure (database pool, config, clock) so it is built exactly once:
@@ -42,18 +43,65 @@ appLayer
 ├─ databaseLayer                PostgreSQL, migrated, from DATABASE_URL
 ├─ crypto / serialization
 └─ http server (:3000)
+
+Svelte page (:5173)
+└─ remote function ── Effect RPC client ── HTTP /rpc ── appLayer
 ```
 
 ## Quick start
 
 ```bash
 bun install
-export DATABASE_URL=postgres://user:pass@localhost:5432/app
-bun run dev            # server on http://localhost:3000
+cp apps/server/.env.example apps/server/.env
+cp apps/web/.env.example apps/web/.env
+bun run dev # starts Postgres, API (:3000), and web UI (:5173)
 ```
 
-Migrations run before the database becomes available; configuration is read once
-at startup through Effect `Config`.
+Open the UI at [http://localhost:5173](http://localhost:5173). Its Svelte remote
+functions use `apps/web/.env` to reach the API without exposing the API URL to the
+browser. The development database binds only to `127.0.0.1:5434`, persists in a
+Docker volume, and matches `apps/server/.env`. Migrations run before the database
+becomes available; configuration is read once at startup through Effect `Config`.
+
+## Observability
+
+The API and web server export OTLP logs, metrics, and traces when their
+respective `.env` files configure `OTEL_EXPORTER_OTLP_ENDPOINT`. The web
+server's RPC client spans propagate trace context to the API, producing one
+cross-service trace rooted at `AgentsRemote.*`.
+
+For local development, [install Maple](https://maple.dev/docs/local-mode/), then:
+
+```bash
+bun run telemetry:up
+bun run dev
+```
+
+Maple opens automatically at [http://127.0.0.1:4318](http://127.0.0.1:4318)
+and stops with Ctrl+C.
+
+### Production Better Stack
+
+Create an OpenTelemetry source and use the values shown by
+[Better Stack](https://betterstack.com/docs/logs/open-telemetry/):
+
+```env
+OTEL_EXPORTER_OTLP_ENDPOINT=https://<ingesting-host>
+OTEL_EXPORTER_OTLP_HEADERS_JSON={"authorization":"Bearer <source-token>"}
+```
+
+Keep the source token in the deployment's secret store. Deployments must set
+`APP_ENV` and `OTEL_SERVICE_NAME`, and should inject `OTEL_SERVICE_VERSION` from
+release metadata.
+
+| Variable | Default |
+|---|---|
+| `APP_ENV` | required |
+| `LOG_LEVEL` | `Debug` locally, `Info` in production |
+| `OTEL_SERVICE_NAME` | required |
+| `OTEL_SERVICE_VERSION` | absent |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | absent (export disabled) |
+| `OTEL_EXPORTER_OTLP_HEADERS_JSON` | absent (JSON object of exporter headers) |
 
 ## Add a feature
 
@@ -110,9 +158,12 @@ root supply the implementation — so cross-feature coupling never becomes a web
 
 | Command | Description |
 |---|---|
-| `bun run dev` | Run the server in watch mode. |
+| `bun run dev` | Start local Postgres, API, and SvelteKit UI in watch mode. |
+| `bun run db:up` | Start local Postgres and wait until it is healthy. |
+| `bun run db:down` | Stop local Postgres without deleting its data. |
 | `bun run check-types` | Type-check with Effect compiler diagnostics. |
 | `bun run test` | Run the test suite. |
 | `bun run check` | Format and lint. |
 | `bun run knip` | Report unused files, exports, and dependencies. |
 | `bun run db:generate` | Generate a migration from the schema. |
+| `bun run telemetry:up` | Start Maple and open its dashboard; Ctrl+C stops it. |

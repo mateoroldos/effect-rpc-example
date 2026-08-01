@@ -1,7 +1,9 @@
 node_modules
 .repos/effect
 dist
+build
 .data
+.svelte-kit
 .turbo
 *.tsbuildinfo
 .env

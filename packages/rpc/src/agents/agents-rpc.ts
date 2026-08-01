@@ -9,16 +9,24 @@ export class Unavailable extends Schema.TaggedErrorClass<Unavailable>()(
   {}
 ) {}
 
+/** The wire input for creating an Agent. */
+export const CreateAgentInput = Schema.Struct({ name: AgentName });
+export type CreateAgentInput = typeof CreateAgentInput.Type;
+
+/** The wire input for retrieving an Agent. */
+export const GetAgentInput = Schema.Struct({ id: AgentId });
+export type GetAgentInput = typeof GetAgentInput.Type;
+
 /** Defines the transport-independent RPC contract for Agent operations. */
 export const group = RpcGroup.make(
   Rpc.make("Agents.Create", {
     error: Unavailable,
-    payload: Schema.Struct({ name: AgentName }),
+    payload: CreateAgentInput,
     success: Agent,
   }),
   Rpc.make("Agents.Get", {
     error: Schema.Union([AgentDirectory.NotFound, Unavailable]),
-    payload: Schema.Struct({ id: AgentId }),
+    payload: GetAgentInput,
     success: Agent,
   }),
   Rpc.make("Agents.List", {

@@ -1,4 +1,4 @@
-import { AgentsRpc } from "@effect-template/rpc/agents";
+import { AppRpc } from "@effect-template/rpc/rpc";
 import { Layer } from "effect";
 import { HttpRouter } from "effect/unstable/http";
 import { RpcServer } from "effect/unstable/rpc";
@@ -10,9 +10,7 @@ const protocolLayer = RpcServer.layerProtocolHttp({ path: "/rpc" }).pipe(
 );
 
 /** HTTP transport preserving its registered RPC handler requirements. */
-export const rpcLayerWithoutDependencies = RpcServer.layer(
-  AgentsRpc.group
-).pipe(
+export const rpcLayerWithoutDependencies = RpcServer.layer(AppRpc.group).pipe(
   Layer.provideMerge(protocolLayer),
   Layer.provide(HttpRouter.serve(protocolLayer, { disableLogger: true }))
 );

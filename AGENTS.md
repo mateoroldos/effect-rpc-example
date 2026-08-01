@@ -28,14 +28,16 @@ Dependencies point one way. Packages leave their Layer requirements open;
 
 ```txt
 database ─→ core ←─ rpc
-                ↑
-              server
+     ↑                 ↑
+   server ─→ observability ←─ web
 ```
 
 - `packages/core` — domain types, application services, and the ports they depend on.
 - `packages/database` — PostgreSQL adapters implementing core ports, drizzle config, schemas, and migrations.
+- `packages/observability` — reusable server telemetry adapter; applications choose its configuration.
 - `packages/rpc` — transport-independent RPC contracts and handlers.
-- `apps/server` — composition root; provides every Layer, launches Bun.
+- `apps/server` — API composition root; provides concrete database, RPC, and telemetry Layers.
+- `apps/web` — web composition root and traced server-side RPC client.
 
 Domain code is pure (no I/O, time, randomness, config). Depend on ports, never
 concrete adapters — only the composition root names implementations. Add a
@@ -43,6 +45,45 @@ capability as new **module directories** in `core`: a pure domain module
 (`agent/`) and, separately, each application service beside its port
 (`agent-directory/`). Reach for a new **package** only at a real boundary — an
 adapter's heavy dependency, cross-app reuse, or a deployable.
+
+## Web component organization
+
+Organize the web app with a hybrid capability-and-component structure:
+
+```txt
+apps/web/src/lib/
+├── components/ui/                    # generic shadcn-style primitives
+├── features/
+│   └── agents/
+│       ├── agent-directory/           # a substantial component and its private files
+│       │   ├── agent-directory.svelte
+│       │   ├── agent-grid.svelte
+│       │   └── agent-card.svelte
+│       └── create-agent-form.svelte  # a cohesive standalone component
+├── remotes/                          # SvelteKit remote adapters
+└── server/                           # server-only runtime infrastructure
+```
+
+- Keep generic, domain-free visual primitives in `components/ui`; compose them
+  into capability-specific UI under `features/<capability>`.
+- Keep routes thin: route metadata, layout, and composition belong in routes;
+  reusable behavior and presentation belong to the capability.
+- Give a substantial component a kebab-case directory when it has private
+  subcomponents, types, tests, or helpers. Keep a standalone component as one
+  file until such a cluster exists.
+- Keep private support files beside the component that owns them. Promote a file
+  only when a second real caller needs it.
+- Import feature files directly. Do not add feature `index.ts` barrels merely to
+  shorten imports. Existing shadcn UI barrels are the primitive library's public
+  interface and remain valid.
+- Split components around meaningful behavior, accessibility, state ownership,
+  or reusable presentation policy—not around every markup element. Do not wrap
+  `CardTitle`, `CardDescription`, or another primitive with a pass-through
+  capability component.
+- Pass state explicitly while ownership is shallow. Use Svelte's typed
+  `createContext` for a genuine compound component with deeply nested shared
+  state. Do not add a context helper or `runed` until it hides repeated,
+  non-trivial behavior; add it as a direct dependency if it is used.
 
 ## Module shape
 
@@ -88,6 +129,123 @@ export const AgentId = Schema.String.pipe(
 export type AgentId = typeof AgentId.Type
 ```
 
+## Full-stack RPC feature
+
+Keep framework, transport, application, and persistence concerns in separate,
+small modules. An Agent feature follows this shape:
+
+```txt
+apps/web/src/routes/+page.svelte
+  → apps/web/src/lib/features/agents/                    Agent UI composition
+    → apps/web/src/lib/remotes/agents.remote.ts          SvelteKit adapter
+    → apps/web/src/lib/server/remotes/rpc.ts              remote runner
+      → apps/web/src/lib/server/rpc/client.ts             shared AppRpc client
+        → apps/web/src/lib/server/runtime.ts              ManagedRuntime
+          → HTTP /rpc
+            → apps/server/src/layers/rpc.ts              AppRpc server
+              → packages/rpc/src/agents/agents-rpc-server.ts
+                → packages/core/src/agent-directory/agent-directory.ts
+                  → packages/core AgentStore port
+                    → packages/database PostgreSQL adapter
+```
+
+### Types and schemas
+
+Schemas have one owner and are composed outward:
+
+```txt
+core domain schemas
+  AgentName, AgentId, Agent
+    ↓
+rpc operation schemas
+  CreateAgentInput = { name: AgentName }
+  GetAgentInput    = { id: AgentId }
+    ↓
+SvelteKit remote validation
+  Schema.toStandardSchemaV1(AgentsRpc.CreateAgentInput)
+```
+
+- `core` owns domain values and invariants.
+- `rpc` owns named wire input schemas and reuses core schemas inside them.
+- `web` reuses the RPC input schema; it does not restate DTO validation.
+- Name schemas only for real payloads. An operation with no input omits
+  `payload`; never invent an empty struct.
+- RPC success schemas reuse core output schemas unless the wire representation
+  intentionally differs.
+
+### RPC groups, client, and runtime
+
+Feature packages own groups such as `AgentsRpc.group`. `AppRpc.group` merges all
+feature groups and is the only group registered by the HTTP server and consumed
+by the web client. Add future capabilities to that aggregate group.
+
+The web app has one shared protocol, schema-aware `AppRpcClient`, and runtime.
+Build the client once as a Layer in the `ManagedRuntime`; do not call
+`RpcClient.make` per operation. Remote adapters call the typed RPC operation
+directly through `runRpc`:
+
+`runRpc` receives the current request's cancellation signal, preserves typed
+failures with `Effect.result`, and maps the application-wide `RpcClientError` to
+a 503 response. Feature errors remain visible to the remote adapter. The shared
+`ManagedRuntime` is disposed by the SvelteKit server lifecycle hook during
+adapter-node shutdown.
+
+### Remote adapters and errors
+
+A `.remote.ts` module owns only SvelteKit concerns: validation, HTTP error
+projection, and query refreshes. Keep error handling inline so the operation's
+inferred error union remains visible and exhaustive:
+
+```ts
+const agents = await runRpc(
+  (client) => client["Agents.List"](),
+  (failure) =>
+    Match.value(failure).pipe(
+      Match.tagsExhaustive({
+        "AgentsRpc.Unavailable": () =>
+          error(503, "The Agents service is unavailable"),
+      }),
+    ),
+)
+```
+
+`runRpc` uses `Effect.result` before crossing into Promise code. Therefore:
+
+```txt
+typed Effect failure → inferred exhaustive Match → SvelteKit error response
+defect / interruption → remains rejected       → SvelteKit handleError / 500
+```
+
+Do not inspect `unknown`, broadly catch rejected Promises, or maintain a global
+registry of every feature error. `runRpc` owns shared transport projection;
+each remote operation maps its own typed feature failures inline. Adding a new
+feature error must make `Match.tagsExhaustive` fail compilation until that
+operation handles it.
+
+Keep `.remote.ts` modules outside `src/lib/server`; SvelteKit forbids remote
+files in that directory. Remote callbacks are framework adapters, so
+`async`/`await` is allowed there. For a client-requested single-flight mutation,
+the client names each query update with `form.submit().updates(...)`; the remote
+form authorizes a bounded number of those requests and refreshes them in the
+same response:
+
+```ts
+await runRpc(
+  (client) => client["Agents.Create"]({ name }),
+  (failure) =>
+    Match.value(failure).pipe(
+      Match.tagsExhaustive({
+        "AgentsRpc.Unavailable": () =>
+          error(503, "The Agents service is unavailable"),
+      }),
+    ),
+)
+await requested(getAgents, 1).refreshAll()
+```
+
+Treat the requested queries as untrusted input: keep the limit explicit and
+accept only the exact query functions that the mutation can invalidate.
+
 ## Errors
 
 Expected failures are typed values, never thrown. Use tagged errors and project
@@ -130,7 +288,7 @@ Use the Effect service. `check-types` fails on the left column.
 | `process.env` | `Config` |
 | `fetch` | `HttpClient` |
 | `setTimeout`, `setInterval` | `Effect.sleep`, `Schedule` |
-| `new Promise`, `async function` | `Effect.gen` |
+| `new Promise`, `async function` in Effect/application code | `Effect.gen` |
 | `class extends Error` | `Schema.TaggedErrorClass` |
 
 Also rejected: a floating (unhandled) Effect, providing implementations outside
@@ -163,9 +321,12 @@ Use property tests for parsers and branded types.
 
 ## Boundaries
 
-- Never wire concrete Layers outside `apps/server`.
+- Wire concrete Layers only in deployable composition roots: `apps/server` for
+  the API and `apps/web/src/lib/server/runtime.ts` for the web server.
 - Export only what a caller consumes. An in-file-only helper (like a service's
   `make`) stays a non-exported `const` — `knip` cannot flag these because they
   live in entry files, so it is a review rule. Do not widen `exports` for tests.
-- Keep each module's `export * as` barrel and its `biome-ignore` comment.
+- Keep each package service module's `export * as` barrel and its `biome-ignore`
+  comment. Web remote adapters call the shared `AppRpcClient` directly; do not
+  add pass-through feature clients.
 - Do not hand-edit generated migrations under `packages/database/drizzle`.

@@ -1,8 +1,11 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "workspaces": {
-    ".": {
-      "ignoreDependencies": ["@biomejs/biome"]
+    ".": {},
+    "apps/web": {
+      "entry": ["src/env.ts", "src/**/*.remote.ts"],
+      "ignore": ["src/lib/components/ui/**/index.ts"],
+      "ignoreDependencies": ["@typescript/native"]
     }
   }
 }

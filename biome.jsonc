@@ -1,7 +1,35 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.5.6/schema.json",
-  "extends": ["ultracite/biome/core"],
+  "extends": ["ultracite/biome/core", "ultracite/biome/svelte"],
   "files": {
     "includes": ["!!packages/database/drizzle"]
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["apps/web/src/lib/components/ui/**/*.svelte"],
+      "assist": {
+        "enabled": false
+      },
+      "linter": {
+        "rules": {
+          "nursery": {
+            "useSortedClasses": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/web/src/lib/components/ui/**/index.ts"],
+      "linter": {
+        "rules": {
+          "performance": {
+            "noBarrelFile": "off"
+          },
+          "style": {
+            "noExportedImports": "off"
+          }
+        }
+      }
+    }
+  ]
 }
