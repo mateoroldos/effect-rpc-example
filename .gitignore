@@ -1,6 +1,7 @@
 node_modules
 .repos/effect
 dist
+.data
 .turbo
 *.tsbuildinfo
 .env

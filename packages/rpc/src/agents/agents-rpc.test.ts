@@ -7,7 +7,6 @@ import {
 } from "@effect-template/core/agent-directory/store";
 import { Crypto, Effect, Layer } from "effect";
 import { RpcTest } from "effect/unstable/rpc";
-
 import { AgentsRpc } from "./agents-rpc.ts";
 import { AgentsRpcServer } from "./agents-rpc-server.ts";
 
@@ -25,15 +24,14 @@ const availableDirectoryLayer = AgentDirectory.layerWithoutDependencies.pipe(
 const availableLayer = AgentsRpcServer.layer.pipe(
   Layer.provide(availableDirectoryLayer)
 );
-const persistenceFailure = (operation: AgentStore.Operation) =>
+const persistenceFailure = () =>
   new AgentStore.PersistenceError({
     cause: new Error("private database details"),
-    operation,
   });
 const unavailableStore: AgentStore.Interface = {
-  create: () => Effect.fail(persistenceFailure("create")),
-  find: () => Effect.fail(persistenceFailure("find")),
-  list: Effect.fail(persistenceFailure("list")),
+  create: () => Effect.fail(persistenceFailure()),
+  find: () => Effect.fail(persistenceFailure()),
+  list: Effect.fail(persistenceFailure()),
 };
 const unavailableDirectoryLayer = AgentDirectory.layerWithoutDependencies.pipe(
   Layer.provide(
@@ -44,6 +42,7 @@ const unavailableDirectoryLayer = AgentDirectory.layerWithoutDependencies.pipe(
 const unavailableLayer = AgentsRpcServer.layer.pipe(
   Layer.provide(unavailableDirectoryLayer)
 );
+
 const unknownId = AgentId.make("123e4567-e89b-42d3-a456-426614174000");
 
 describe("agents RPC", () => {
@@ -71,6 +70,7 @@ describe("agents RPC", () => {
           const error = yield* client["Agents.Get"]({ id: unknownId }).pipe(
             Effect.flip
           );
+
           assert.deepInclude(error, {
             _tag: "AgentDirectory.NotFound",
             id: unknownId,
@@ -81,7 +81,7 @@ describe("agents RPC", () => {
   });
 
   it.layer(unavailableLayer)("unavailable persistence", (test) => {
-    test.effect("projects safe operation-specific failures", () =>
+    test.effect("projects persistence failures to Unavailable", () =>
       Effect.scoped(
         Effect.gen(function* () {
           const client = yield* RpcTest.makeClient(AgentsRpc.group);
@@ -93,18 +93,9 @@ describe("agents RPC", () => {
           );
           const listError = yield* client["Agents.List"]().pipe(Effect.flip);
 
-          assert.deepEqual(
-            createError,
-            new AgentsRpc.Unavailable({ operation: "create" })
-          );
-          assert.deepEqual(
-            getError,
-            new AgentsRpc.Unavailable({ operation: "get" })
-          );
-          assert.deepEqual(
-            listError,
-            new AgentsRpc.Unavailable({ operation: "list" })
-          );
+          assert.deepEqual(createError, new AgentsRpc.Unavailable());
+          assert.deepEqual(getError, new AgentsRpc.Unavailable());
+          assert.deepEqual(listError, new AgentsRpc.Unavailable());
         })
       )
     );

@@ -102,9 +102,22 @@ export class NotFound extends Schema.TaggedErrorClass<NotFound>()(
 // in an adapter: translate a technology error into the port's error type
 directory.get(id).pipe(
   Effect.catchTag("AgentStore.PersistenceError", () =>
-    new AgentsRpc.Unavailable({ operation: "get" })),
+    new AgentsRpc.Unavailable()),
 )
 ```
+
+## Observability
+
+Use named `Effect.fn` spans for meaningful operations and rely on native transport
+spans for request and RPC completion. Use metrics for aggregates and logs for
+retries, fallbacks, and exhausted work—not routine success. Keep response logging
+disabled unless access logs are required. Do not duplicate native failure events
+with manual error categories or error attributes. Project errors safely at RPC
+boundaries while nested spans preserve internal failures. Telemetry must not
+contain payloads, headers, SQL, credentials, names, IDs, or foreign messages.
+Attach only bounded, safe attributes where their facts are owned. Preserve
+failures, defects, and interruptions exactly; observability must not retry or
+change business outcomes.
 
 ## Never reach for a global
 

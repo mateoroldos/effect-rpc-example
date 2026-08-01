@@ -49,7 +49,11 @@ const pgTypeParsers: CustomTypesConfig = {
  * still owns where it comes from.
  */
 export const clientLayer = (url: Config.Config<Redacted.Redacted<string>>) =>
-  PgClient.layerConfig({ types: Config.succeed(pgTypeParsers), url });
+  PgClient.layerConfig({
+    spanAttributes: Config.succeed({ "peer.service": "postgresql" }),
+    types: Config.succeed(pgTypeParsers),
+    url,
+  });
 
 /** Indicates that PostgreSQL migrations could not be applied. */
 export class MigrationError extends Schema.TaggedErrorClass<MigrationError>()(

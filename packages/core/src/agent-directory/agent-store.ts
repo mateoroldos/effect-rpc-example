@@ -19,18 +19,10 @@ export class Service extends Context.Service<Service, Interface>()(
   "@effect-template/core/AgentStore"
 ) {}
 
-/** Identifies Agent persistence operations that can fail. */
-export const Operation = Schema.Literals(["create", "find", "list"]);
-/** An Agent persistence operation that can fail. */
-export type Operation = typeof Operation.Type;
-
-/** Indicates that an Agent persistence operation failed. */
+/** Indicates that Agent persistence failed. */
 export class PersistenceError extends Schema.TaggedErrorClass<PersistenceError>()(
   "AgentStore.PersistenceError",
-  {
-    cause: Schema.Defect(),
-    operation: Operation,
-  }
+  { cause: Schema.Defect() }
 ) {}
 
 /** Provides isolated in-memory Agent persistence for tests. */
@@ -53,7 +45,6 @@ export const layerMemory = Layer.effect(
       if (!inserted) {
         return yield* new PersistenceError({
           cause: new Error("Agent identity already exists"),
-          operation: "create",
         });
       }
     });

@@ -9,14 +9,10 @@ import { agents } from "./schema.ts";
 
 const decodeAgents = Schema.decodeUnknownEffect(Schema.Array(Agent));
 
-const persistenceError = (operation: AgentStore.Operation) =>
-  Effect.mapError(
-    (cause: unknown) => new AgentStore.PersistenceError({ cause, operation })
-  );
-
-const decodeRows = Effect.fn("AgentStorePostgres.decodeRows")(
-  (operation: AgentStore.Operation, rows: unknown) =>
-    decodeAgents(rows).pipe(persistenceError(operation))
+const decodeRows = Effect.fn("AgentStorePostgres.decodeRows")((rows: unknown) =>
+  decodeAgents(rows).pipe(Effect.mapError(
+    (cause: unknown) => new AgentStore.PersistenceError({ cause })
+  ))
 );
 
 /** Constructs an AgentStore backed by an acquired Drizzle database. */
@@ -25,7 +21,9 @@ const make = (database: EffectPgDatabase): AgentStore.Interface => {
     database
       .insert(agents)
       .values({ id: agent.id, name: agent.name })
-      .pipe(persistenceError("create"), Effect.asVoid)
+      .pipe(Effect.mapError(
+        (cause: unknown) => new AgentStore.PersistenceError({ cause })
+      ), Effect.asVoid)
   );
 
   const find = Effect.fn("AgentStorePostgres.find")(function* (id: AgentId) {
@@ -34,8 +32,10 @@ const make = (database: EffectPgDatabase): AgentStore.Interface => {
       .from(agents)
       .where(eq(agents.id, id))
       .limit(1)
-      .pipe(persistenceError("find"));
-    const [agent] = yield* decodeRows("find", rows);
+      .pipe(Effect.mapError(
+        (cause: unknown) => new AgentStore.PersistenceError({ cause })
+      ));
+    const [agent] = yield* decodeRows(rows);
     return agent === undefined ? Option.none() : Option.some(agent);
   });
 
@@ -43,8 +43,10 @@ const make = (database: EffectPgDatabase): AgentStore.Interface => {
     .select()
     .from(agents)
     .pipe(
-      persistenceError("list"),
-      Effect.flatMap((rows) => decodeRows("list", rows)),
+      Effect.mapError(
+        (cause: unknown) => new AgentStore.PersistenceError({ cause })
+      ),
+      Effect.flatMap(decodeRows),
       Effect.withSpan("AgentStorePostgres.list")
     );
 

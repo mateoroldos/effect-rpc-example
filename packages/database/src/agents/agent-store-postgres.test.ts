@@ -35,7 +35,6 @@ describe("PostgreSQL AgentStore", () => {
         const error = yield* store.create(ada).pipe(Effect.flip);
         assert.deepInclude(error, {
           _tag: "AgentStore.PersistenceError",
-          operation: "create",
         });
       })
     );

@@ -14,7 +14,7 @@ export const rpcLayerWithoutDependencies = RpcServer.layer(
   AgentsRpc.group
 ).pipe(
   Layer.provideMerge(protocolLayer),
-  Layer.provide(HttpRouter.serve(protocolLayer))
+  Layer.provide(HttpRouter.serve(protocolLayer, { disableLogger: true }))
 );
 
 /** HTTP transport serving all production RPC feature handlers. */
