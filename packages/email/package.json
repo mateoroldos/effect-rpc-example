@@ -1,0 +1,19 @@
+{
+  "name": "@effect-template/email",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./cloudflare": "./src/cloudflare.ts"
+  },
+  "scripts": {
+    "check-types": "tsc"
+  },
+  "dependencies": {
+    "@effect-template/core": "workspace:*",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:"
+  }
+}

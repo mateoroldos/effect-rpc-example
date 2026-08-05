@@ -2,6 +2,7 @@ import { BunCrypto, BunHttpServer } from "@effect/platform-bun";
 import { Config, Layer } from "effect";
 import { RpcSerialization } from "effect/unstable/rpc";
 
+import { emailLayer } from "./layers/email.ts";
 import { databaseLayer } from "./layers/infrastructure.ts";
 import { rpcLayer } from "./layers/rpc.ts";
 import { telemetryLayer } from "./layers/telemetry.ts";
@@ -16,5 +17,6 @@ export const appLayer = rpcLayer.pipe(
       port: Config.number("PORT").pipe(Config.withDefault(3000)),
     })
   ),
-  Layer.provide(telemetryLayer)
+  Layer.provide(telemetryLayer),
+  Layer.merge(emailLayer)
 );

@@ -26,6 +26,7 @@
       "dependencies": {
         "@effect-template/core": "workspace:*",
         "@effect-template/database": "workspace:*",
+        "@effect-template/email": "workspace:*",
         "@effect-template/observability": "workspace:*",
         "@effect-template/rpc": "workspace:*",
         "@effect/platform-bun": "4.0.0-beta.102",
@@ -92,6 +93,17 @@
         "@types/bun": "catalog:",
         "@types/pg": "^8.20.3",
         "drizzle-kit": "1.0.0-rc.4",
+      },
+    },
+    "packages/email": {
+      "name": "@effect-template/email",
+      "version": "0.0.0",
+      "dependencies": {
+        "@effect-template/core": "workspace:*",
+        "effect": "catalog:",
+      },
+      "devDependencies": {
+        "@types/bun": "catalog:",
       },
     },
     "packages/infra": {
@@ -230,6 +242,8 @@
     "@effect-template/core": ["@effect-template/core@workspace:packages/core"],
 
     "@effect-template/database": ["@effect-template/database@workspace:packages/database"],
+
+    "@effect-template/email": ["@effect-template/email@workspace:packages/email"],
 
     "@effect-template/infra": ["@effect-template/infra@workspace:packages/infra"],
 
