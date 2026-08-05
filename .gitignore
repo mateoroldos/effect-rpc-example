@@ -5,6 +5,7 @@ build
 .data
 .svelte-kit
 .turbo
+.alchemy
 *.tsbuildinfo
 .env
 .env.*

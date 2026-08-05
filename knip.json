@@ -1,7 +1,9 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "workspaces": {
-    ".": {},
+    ".": {
+      "entry": ["alchemy.run.ts"]
+    },
     "apps/web": {
       "entry": ["src/env.ts", "src/**/*.remote.ts"],
       "ignore": ["src/lib/components/ui/**/index.ts"],
