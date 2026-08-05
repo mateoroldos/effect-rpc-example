@@ -4,13 +4,18 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite dev",
+    "dev": "OTEL_SERVICE_NAME=\"${DEV_INSTANCE:?Set DEV_INSTANCE in root .env}-web\" portless run --name \"${DEV_INSTANCE}.effect-template\"",
+    "dev:app": "vite dev --host ${HOST:-127.0.0.1} --port ${PORT:-5173} --strictPort",
     "build": "vite build",
     "start": "node build/index.js",
     "preview": "vite preview",
     "prepare": "svelte-kit sync || echo ''",
     "check-types": "svelte-kit sync && svelte-check --tsgo --tsconfig ./tsconfig.json",
     "lint": "biome check src"
+  },
+  "portless": {
+    "name": "effect-template",
+    "script": "dev:app"
   },
   "dependencies": {
     "@effect-template/core": "workspace:*",

@@ -1,3 +1,5 @@
+name: effect-template-${DEV_INSTANCE:?Set DEV_INSTANCE in .env}
+
 services:
   postgres:
     image: postgres:17-alpine
@@ -6,7 +8,11 @@ services:
       POSTGRES_PASSWORD: effect_template
       POSTGRES_USER: effect_template
     ports:
-      - "127.0.0.1:${POSTGRES_PORT:-5434}:5432"
+      - name: postgres
+        target: 5432
+        published: "${POSTGRES_PORT:?Set POSTGRES_PORT in .env}"
+        host_ip: 127.0.0.1
+        protocol: tcp
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:

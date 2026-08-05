@@ -5,10 +5,15 @@
   "type": "module",
   "exports": "./src/index.ts",
   "scripts": {
-    "dev": "bun run --watch src/index.ts",
+    "dev": "OTEL_SERVICE_NAME=\"${DEV_INSTANCE:?Set DEV_INSTANCE in root .env}-api\" portless run --name \"${DEV_INSTANCE}.api.effect-template\"",
+    "dev:app": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts",
     "db:migrate": "bun run src/migrate.ts",
     "check-types": "tsc"
+  },
+  "portless": {
+    "name": "api.effect-template",
+    "script": "dev:app"
   },
   "dependencies": {
     "@effect-template/core": "workspace:*",

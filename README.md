@@ -42,43 +42,72 @@ appLayer
 │  └─ agents handlers ── AgentDirectory ── AgentStore (Postgres adapter)
 ├─ databaseLayer                PostgreSQL, migrated, from DATABASE_URL
 ├─ crypto / serialization
-└─ http server (:3000)
+└─ HTTP server (Portless-assigned port)
 
-Svelte page (:5173)
+Svelte page (Portless-assigned port)
 └─ remote function ── Effect RPC client ── HTTP /rpc ── appLayer
 ```
 
 ## Quick start
 
+Install dependencies, create explicit workspace configuration, trust Portless's
+local certificate, then start PostgreSQL and the applications separately:
+
 ```bash
 bun install
-cp apps/server/.env.example apps/server/.env
-cp apps/web/.env.example apps/web/.env
-bun run dev # starts Postgres, API (:3000), and web UI (:5173)
-```
-
-Open the UI at [http://localhost:5173](http://localhost:5173). Its Svelte remote
-functions use `apps/web/.env` to reach the API without exposing the API URL to the
-browser. The development database binds only to `127.0.0.1:5434`, persists in a
-Docker volume, and matches `apps/server/.env`. Migrations run before the database
-becomes available; configuration is read once at startup through Effect `Config`.
-
-## Observability
-
-The API and web server export OTLP logs, metrics, and traces when their
-respective `.env` files configure `OTEL_EXPORTER_OTLP_ENDPOINT`. The web
-server's RPC client spans propagate trace context to the API, producing one
-cross-service trace rooted at `AgentsRemote.*`.
-
-For local development, [install Maple](https://maple.dev/docs/local-mode/), then:
-
-```bash
-bun run telemetry:up
+cp .env.example .env
+bunx --no-install portless trust
+bun run db:up
 bun run dev
 ```
 
-Maple opens automatically at [http://127.0.0.1:4318](http://127.0.0.1:4318)
-and stops with Ctrl+C.
+Edit `.env` before running a second workspace. `DEV_INSTANCE`, `POSTGRES_PORT`,
+`DATABASE_URL`, and `API_URL` must describe that workspace and use an available
+PostgreSQL port:
+
+```env
+DEV_INSTANCE=authentication
+POSTGRES_PORT=5433
+DATABASE_URL=postgresql://effect_template:effect_template@127.0.0.1:5433/effect_template
+API_URL=https://authentication.api.effect-template.localhost
+```
+
+Turbo runs each package's `dev` script. Portless reads the package's `portless`
+configuration, allocates its internal HTTP port, and runs `dev:app` through the
+proxy. The explicit `DEV_INSTANCE` prefixes the configured names because
+Portless detects Git worktrees but not JJ workspaces:
+
+```text
+Web  https://authentication.effect-template.localhost
+API  https://authentication.api.effect-template.localhost
+```
+
+PostgreSQL is independent of the application lifecycle. `Ctrl+C` stops Turbo,
+the API, and the Web process; run `bun run db:down` when PostgreSQL should stop.
+The Compose project and volume use `DEV_INSTANCE`, so data remains isolated and
+survives `db:down`. `db:destroy` removes that workspace's database volume.
+
+Each application keeps a `dev:app` script for focused debugging without
+Portless. Direct callers must provide that application's required environment.
+
+## Observability
+
+The API and web server export OTLP logs, metrics, and traces when the root
+`.env` configures `OTEL_EXPORTER_OTLP_ENDPOINT`. The web server's RPC client
+spans propagate trace context to the API, producing one cross-service trace
+rooted at `AgentsRemote.*`.
+
+For the complete local profile, [install Maple](https://maple.dev/docs/local-mode/),
+then run:
+
+```bash
+bun run dev:full
+```
+
+This starts or reuses one machine-level Maple process and configures the apps to
+export telemetry to it. Plain `bun run dev` does not require Maple.
+`bun run telemetry:up` starts or reuses Maple independently. Maple persists
+machine-level data under its default `~/.maple/data` directory.
 
 ### Production Better Stack
 
@@ -158,12 +187,14 @@ root supply the implementation — so cross-feature coupling never becomes a web
 
 | Command | Description |
 |---|---|
-| `bun run dev` | Start local Postgres, API, and SvelteKit UI in watch mode. |
-| `bun run db:up` | Start local Postgres and wait until it is healthy. |
-| `bun run db:down` | Stop local Postgres without deleting its data. |
+| `bun run dev` | Start API and Web through Turbo and Portless using root `.env`. |
+| `bun run dev:full` | Start Maple, then API and Web with local telemetry enabled. |
+| `bun run db:up` | Start this workspace's configured PostgreSQL container. |
+| `bun run db:down` | Remove its container/network while preserving database data. |
+| `bun run db:destroy` | Remove its container, network, and database volume. |
 | `bun run check-types` | Type-check with Effect compiler diagnostics. |
 | `bun run test` | Run the test suite. |
 | `bun run check` | Format and lint. |
 | `bun run knip` | Report unused files, exports, and dependencies. |
 | `bun run db:generate` | Generate a migration from the schema. |
-| `bun run telemetry:up` | Start Maple and open its dashboard; Ctrl+C stops it. |
+| `bun run telemetry:up` | Start or reuse the machine-level Maple process. |
