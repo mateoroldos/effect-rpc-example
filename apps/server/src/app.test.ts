@@ -29,7 +29,8 @@ const clientProtocolLayer = RpcClient.layerProtocolHttp({
   url: "",
 });
 const endToEndLayer = Layer.merge(serverLayer, clientProtocolLayer).pipe(
-  Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerNdjson])
+  Layer.provide(RpcSerialization.layerNdjson),
+  Layer.provideMerge(NodeHttpServer.layerTest)
 );
 
 describe("server", () => {
@@ -45,6 +46,15 @@ describe("server", () => {
           yield* client["Agents.Get"]({ id: created.id }),
           created
         );
+      })
+    );
+
+    test.effect("serves the liveness probe", () =>
+      Effect.gen(function* () {
+        const http = yield* HttpClient.HttpClient;
+        const response = yield* http.get("/health");
+        assert.strictEqual(response.status, 200);
+        assert.strictEqual(yield* response.text, "ok");
       })
     );
   });
