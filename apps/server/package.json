@@ -5,7 +5,7 @@
   "type": "module",
   "exports": "./src/index.ts",
   "scripts": {
-    "dev": "OTEL_SERVICE_NAME=\"${DEV_INSTANCE:?Set DEV_INSTANCE in root .env}-api\" portless run --name \"${DEV_INSTANCE}.api.effect-template\"",
+    "dev": "portless run --name \"${DEV_INSTANCE:?run 'bun run dev' from the repo root}.api.effect-template\"",
     "dev:app": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts",
     "db:migrate": "bun run src/migrate.ts",

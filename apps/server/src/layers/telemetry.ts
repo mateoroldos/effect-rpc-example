@@ -9,7 +9,10 @@ const otlpEndpoint = Config.option(
 const otlpHeaders = Config.option(
   Config.redacted("OTEL_EXPORTER_OTLP_HEADERS_JSON")
 );
-const serviceName = Config.string("OTEL_SERVICE_NAME");
+const serviceName = Config.string("DEV_INSTANCE").pipe(
+  Config.map((instance) => `${instance}-api`),
+  Config.withDefault("effect-template-api")
+);
 const serviceVersion = Config.option(Config.string("OTEL_SERVICE_VERSION"));
 
 /** Runtime logging and optional OTLP export for logs, metrics, and traces. */

@@ -11,15 +11,7 @@
     "dev": {
       "cache": false,
       "persistent": true,
-      "passThroughEnv": [
-        "API_URL",
-        "APP_ENV",
-        "DATABASE_URL",
-        "DEV_INSTANCE",
-        "LOG_LEVEL",
-        "OTEL_*",
-        "PORTLESS_*"
-      ]
+      "passThroughEnv": ["DEV_INSTANCE", "POSTGRES_PORT"]
     }
   }
 }

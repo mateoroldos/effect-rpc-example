@@ -1,5 +1,3 @@
-name: effect-template-${DEV_INSTANCE:?Set DEV_INSTANCE in .env}
-
 services:
   postgres:
     image: postgres:17-alpine

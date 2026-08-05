@@ -55,47 +55,60 @@ local certificate, then start PostgreSQL and the applications separately:
 
 ```bash
 bun install
-cp .env.example .env
+cp .env.example .env                          # orchestration: POSTGRES_PORT
+cp apps/server/.env.example apps/server/.env  # API runtime config
+cp apps/web/.env.example apps/web/.env        # web runtime config
 bunx --no-install portless trust
 bun run db:up
 bun run dev
 ```
 
-Edit `.env` before running a second workspace. `DEV_INSTANCE`, `POSTGRES_PORT`,
-`DATABASE_URL`, and `API_URL` must describe that workspace and use an available
-PostgreSQL port:
+### Parallel workspaces
 
-```env
-DEV_INSTANCE=authentication
-POSTGRES_PORT=5433
-DATABASE_URL=postgresql://effect_template:effect_template@127.0.0.1:5433/effect_template
-API_URL=https://authentication.api.effect-template.localhost
-```
-
-Turbo runs each package's `dev` script. Portless reads the package's `portless`
-configuration, allocates its internal HTTP port, and runs `dev:app` through the
-proxy. The explicit `DEV_INSTANCE` prefixes the configured names because
-Portless detects Git worktrees but not JJ workspaces:
+A git worktree, jj workspace, or extra clone derives its identity from its
+**directory name** — no config. `bun run dev` there gets isolated URLs, database,
+and telemetry:
 
 ```text
-Web  https://authentication.effect-template.localhost
-API  https://authentication.api.effect-template.localhost
+Web  https://<dir>.effect-template.localhost
+API  https://<dir>.api.effect-template.localhost
 ```
 
-PostgreSQL is independent of the application lifecycle. `Ctrl+C` stops Turbo,
-the API, and the Web process; run `bun run db:down` when PostgreSQL should stop.
-The Compose project and volume use `DEV_INSTANCE`, so data remains isolated and
-survives `db:down`. `db:destroy` removes that workspace's database volume.
+Running two at once? Give the second a free `POSTGRES_PORT` in its root `.env`.
+Override the derived name with `DEV_INSTANCE=<name> bun run dev`. Postgres is
+independent of the apps: `Ctrl+C` stops the apps; `bun run db:down` stops Postgres
+(data survives), `db:destroy` drops its volume. Each app also has a `dev:app`
+script to run it directly, without portless.
 
-Each application keeps a `dev:app` script for focused debugging without
-Portless. Direct callers must provide that application's required environment.
+## Environment variables
+
+Split by consumer ([Turborepo's
+recommendation](https://turborepo.dev/docs/crafting-your-repository/using-environment-variables)):
+the root `.env` holds orchestration only; each app owns its runtime `.env`.
+
+| File | Owns | Loaded by |
+| --- | --- | --- |
+| `.env` | `POSTGRES_PORT` | dev scripts, docker-compose |
+| `apps/server/.env` | `APP_ENV`, `OTEL_*` | Bun (from the app's cwd) |
+| `apps/web/.env` | `APP_ENV`, `OTEL_*` | Vite / SvelteKit |
+
+Two values are **derived in dev, explicit in prod**: `DATABASE_URL` (from
+`POSTGRES_PORT`) and `API_URL` (from the workspace id). The id defaults to the
+directory name; override by exporting `DEV_INSTANCE`. Deploy creds are separate —
+see [`alchemy.env.example`](alchemy.env.example).
+
+Telemetry has one switch per app: `OTEL_EXPORTER_OTLP_ENDPOINT` set → export on,
+unset → console only (default). Locally, run `bun run telemetry:up` and uncomment
+the endpoint in the app's `.env`; prod sets it for Axiom. The service name is
+derived in code (`${DEV_INSTANCE}-api`/`-web`), not an env var.
 
 ## Observability
 
-The API and web server export OTLP logs, metrics, and traces when the root
-`.env` configures `OTEL_EXPORTER_OTLP_ENDPOINT`. The web server's RPC client
-spans propagate trace context to the API, producing one cross-service trace
-rooted at `AgentsRemote.*`.
+The API and web server export OTLP logs, metrics, and traces when each app's
+`.env` sets `OTEL_EXPORTER_OTLP_ENDPOINT`. Locally, `bun run telemetry:up` starts
+the Maple collector at `http://localhost:4318` — point each app there. The web
+server's RPC client spans propagate trace context to the API, producing one
+cross-service trace rooted at `AgentsRemote.*`.
 
 For the complete local profile, [install Maple](https://maple.dev/docs/local-mode/),
 then run:
@@ -123,15 +136,14 @@ OTEL_EXPORTER_OTLP_HEADERS_JSON={"Authorization":"Bearer <ingest-token>","X-Axio
 
 The exporter is provider-agnostic, so any OTLP backend (Better Stack, Grafana,
 a self-hosted collector) works with the same two variables. Keep the token in
-the deployment's secret store. Deployments must set `APP_ENV` and
-`OTEL_SERVICE_NAME`, and should inject `OTEL_SERVICE_VERSION` from release
-metadata.
+the deployment's secret store. Deployments must set `APP_ENV` and should inject
+`OTEL_SERVICE_VERSION` from release metadata; the service name is derived in code.
 
 | Variable | Default |
 |---|---|
 | `APP_ENV` | required |
 | `LOG_LEVEL` | `Debug` locally, `Info` in production |
-| `OTEL_SERVICE_NAME` | required |
+| `OTEL_SERVICE_NAME` | derived in code |
 | `OTEL_SERVICE_VERSION` | absent |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | absent (export disabled) |
 | `OTEL_EXPORTER_OTLP_HEADERS_JSON` | absent (JSON object of exporter headers) |
@@ -251,7 +263,7 @@ root supply the implementation — so cross-feature coupling never becomes a web
 | Command | Description |
 |---|---|
 | `bun run dev` | Start API and Web through Turbo and Portless using root `.env`. |
-| `bun run dev:full` | Start Maple, then API and Web with local telemetry enabled. |
+| `bun run dev:full` | Start Maple, then API and Web. |
 | `bun run db:up` | Start this workspace's configured PostgreSQL container. |
 | `bun run db:down` | Remove its container/network while preserving database data. |
 | `bun run db:destroy` | Remove its container, network, and database volume. |
