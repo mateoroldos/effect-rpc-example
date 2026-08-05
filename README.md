@@ -109,19 +109,23 @@ export telemetry to it. Plain `bun run dev` does not require Maple.
 `bun run telemetry:up` starts or reuses Maple independently. Maple persists
 machine-level data under its default `~/.maple/data` directory.
 
-### Production Better Stack
+### Production telemetry (Axiom)
 
-Create an OpenTelemetry source and use the values shown by
-[Better Stack](https://betterstack.com/docs/logs/open-telemetry/):
+`bun run infra:deploy` provisions an [Axiom](https://axiom.co) dataset and a
+scoped ingest token (see [Infrastructure](#infrastructure)). Point the
+deployment's OTLP exporter at Axiom — one dataset receives logs, traces, and
+metrics, routed by the `X-Axiom-Dataset` header:
 
 ```env
-OTEL_EXPORTER_OTLP_ENDPOINT=https://<ingesting-host>
-OTEL_EXPORTER_OTLP_HEADERS_JSON={"authorization":"Bearer <source-token>"}
+OTEL_EXPORTER_OTLP_ENDPOINT=https://api.axiom.co
+OTEL_EXPORTER_OTLP_HEADERS_JSON={"Authorization":"Bearer <ingest-token>","X-Axiom-Dataset":"effect-template"}
 ```
 
-Keep the source token in the deployment's secret store. Deployments must set
-`APP_ENV` and `OTEL_SERVICE_NAME`, and should inject `OTEL_SERVICE_VERSION` from
-release metadata.
+The exporter is provider-agnostic, so any OTLP backend (Better Stack, Grafana,
+a self-hosted collector) works with the same two variables. Keep the token in
+the deployment's secret store. Deployments must set `APP_ENV` and
+`OTEL_SERVICE_NAME`, and should inject `OTEL_SERVICE_VERSION` from release
+metadata.
 
 | Variable | Default |
 |---|---|
@@ -131,6 +135,65 @@ release metadata.
 | `OTEL_SERVICE_VERSION` | absent |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | absent (export disabled) |
 | `OTEL_EXPORTER_OTLP_HEADERS_JSON` | absent (JSON object of exporter headers) |
+
+## Infrastructure
+
+Two planes. [Alchemy](https://alchemy.run) provisions the cloud primitives; the
+apps deploy to [Railway](https://railway.com) natively from git. They meet at the
+env vars Alchemy's outputs become — set once in Railway.
+
+```txt
+Alchemy (`bun run infra:deploy`)              Railway (git push + railway.json)
+├─ Neon Postgres      → DATABASE_URL  ─┐
+├─ Axiom dataset+token → OTEL_* ───────┤
+├─ R2 bucket          → R2_* (later) ──┼─► server  (Bun, /health, pre-deploy migrate)
+├─ Cloudflare email token → CF creds ──┤
+└─ (state in Cloudflare DO SQLite)      └─► web    (SvelteKit adapter-node)
+```
+
+### Alchemy — `alchemy.run.ts`
+
+One stack provisions Neon, Axiom, an (empty) R2 bucket, and a Cloudflare Email
+Sending API token. State lives in a Cloudflare DO store, shared by local and CI;
+`ALCHEMY_LOCAL_STATE=1` opts into throwaway local file state (`.alchemy/`) for
+experiments that must not touch it. Deploy-time credentials (never seen by the running apps)
+come from the environment — see [`alchemy.env.example`](alchemy.env.example):
+
+```bash
+cp alchemy.env.example .env.deploy   # fill in the tokens
+set -a; source .env.deploy; set +a
+bun run check-types                  # typechecks the stack (folded in)
+bun run infra:deploy                 # provision (prints a safe summary)
+```
+
+Resource attributes are lazy — secrets never print. Retrieve each from its
+provider console for the one-time paste into Railway (see the runbook).
+
+### Railway — `apps/*/railway.json`
+
+Each app has a `railway.json` + a `Dockerfile` that `turbo prune`s the monorepo
+to just that app. In Railway, set each service's **root directory to the repo
+root** and its **config path** to `apps/<app>/railway.json`; Railway builds on
+push. The server runs its migration as a **pre-deploy command** and exposes
+`GET /health` for the healthcheck.
+
+### Deploy runbook (single prod, one-time)
+
+1. `bun run infra:deploy` — provision Neon, Axiom, R2, email token.
+2. **Onboard the email domain:** `wrangler email sending enable <domain>` (adds
+   DNS records; the domain's DNS must be on Cloudflare).
+3. **Collect secrets** from each console: Neon → `DATABASE_URL` (pooled); Axiom →
+   ingest token; Cloudflare → the email API token value (shown once on create).
+4. **Create two Railway services** (server, web) from the repo; set root dir +
+   config path as above.
+5. **Set Railway variables** — see [`apps/server/.env.example`](apps/server/.env.example)
+   and [`apps/web/.env.example`](apps/web/.env.example) for the full inventory
+   (`DATABASE_URL`, `OTEL_*` for Axiom, `CLOUDFLARE_ACCOUNT_ID`,
+   `CLOUDFLARE_EMAIL_API_TOKEN`, `EMAIL_FROM_*`, `APP_ENV=production`).
+6. **DNS** (optional custom domains): add each Railway service's domain in its
+   settings, then create the CNAME it shows in Cloudflare (manual — the target
+   only exists after the service does).
+7. **Push** — Railway builds and deploys; the server migrates before serving.
 
 ## Add a feature
 
@@ -192,9 +255,11 @@ root supply the implementation — so cross-feature coupling never becomes a web
 | `bun run db:up` | Start this workspace's configured PostgreSQL container. |
 | `bun run db:down` | Remove its container/network while preserving database data. |
 | `bun run db:destroy` | Remove its container, network, and database volume. |
-| `bun run check-types` | Type-check with Effect compiler diagnostics. |
+| `bun run check-types` | Type-check every package (with Effect compiler diagnostics) plus the Alchemy stack. |
 | `bun run test` | Run the test suite. |
 | `bun run check` | Format and lint. |
 | `bun run knip` | Report unused files, exports, and dependencies. |
 | `bun run db:generate` | Generate a migration from the schema. |
 | `bun run telemetry:up` | Start or reuse the machine-level Maple process. |
+| `bun run infra:deploy` | Provision Neon, Axiom, R2, and the email token via Alchemy. |
+| `bun run infra:destroy` | Tear down all Alchemy-provisioned resources. |
