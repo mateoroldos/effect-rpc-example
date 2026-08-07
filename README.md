@@ -55,11 +55,9 @@ local certificate, then start PostgreSQL and the applications separately:
 
 ```bash
 bun install
-cp .env.example .env                          # orchestration: POSTGRES_PORT
-cp apps/server/.env.example apps/server/.env  # API runtime config
-cp apps/web/.env.example apps/web/.env        # web runtime config
+bun run env:setup             # seed .env beside every .env.example (create-if-missing)
 bunx --no-install portless trust
-bun run db:up
+bun run db:setup              # start PostgreSQL and run migrations
 bun run dev
 ```
 

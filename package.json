@@ -8,8 +8,10 @@
   ],
   "scripts": {
     "prepare": "./scripts/prepare-effect.sh && effect-tsgo patch",
+    "env:setup": "sh scripts/setup-env.sh",
     "dev": "sh scripts/with-instance.sh bun --env-file=.env turbo dev",
     "dev:full": "bun run telemetry:up && sh scripts/with-instance.sh bun --env-file=.env turbo dev",
+    "db:setup": "bun run db:up && bun run db:migrate",
     "db:up": "docker compose up -d --wait postgres",
     "db:down": "docker compose down --remove-orphans",
     "db:destroy": "docker compose down --volumes --remove-orphans",
