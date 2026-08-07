@@ -72,28 +72,32 @@ Web  https://<dir>.effect-template.localhost
 API  https://<dir>.api.effect-template.localhost
 ```
 
-Running two at once? Give the second a free `POSTGRES_PORT` in its root `.env`.
-Override the derived name with `DEV_INSTANCE=<name> bun run dev`. Postgres is
-independent of the apps: `Ctrl+C` stops the apps; `bun run db:down` stops Postgres
-(data survives), `db:destroy` drops its volume. Each app also has a `dev:app`
-script to run it directly, without portless.
+Run as many at once as you like — no config. All workspaces share one local
+Postgres; each gets its own database inside it (`eff_<id>`), created on demand by
+`bun run db:setup`. Override the derived name with `DEV_INSTANCE=<name> bun run dev`.
+Postgres is independent of the apps: `Ctrl+C` stops the apps; `bun run db:down`
+stops the shared Postgres (data survives), `bun run db:destroy` drops **this**
+workspace's database (others untouched), `bun run db:nuke` removes the shared
+server and all data. Each app also has a `dev:app` script to run it directly,
+without portless.
 
 ## Environment variables
 
 Split by consumer ([Turborepo's
 recommendation](https://turborepo.dev/docs/crafting-your-repository/using-environment-variables)):
-the root `.env` holds orchestration only; each app owns its runtime `.env`.
+each app owns its runtime `.env`. There is no root `.env` — orchestration is
+derived from the workspace id.
 
 | File | Owns | Loaded by |
 | --- | --- | --- |
-| `.env` | `POSTGRES_PORT` | dev scripts, docker-compose |
 | `apps/server/.env` | `APP_ENV`, `OTEL_*` | Bun (from the app's cwd) |
 | `apps/web/.env` | `APP_ENV`, `OTEL_*` | Vite / SvelteKit |
 
-Two values are **derived in dev, explicit in prod**: `DATABASE_URL` (from
-`POSTGRES_PORT`) and `API_URL` (from the workspace id). The id defaults to the
-directory name; override by exporting `DEV_INSTANCE`. Deploy creds are separate —
-see [`alchemy.env.example`](alchemy.env.example).
+Two values are **derived in dev, explicit in prod**: `DATABASE_URL`
+(`eff_<id>` in the shared local Postgres) and `API_URL` (the workspace's portless
+URL). Both derive from the workspace id, which defaults to the directory name;
+override by exporting `DEV_INSTANCE`. Deploy creds are separate — see
+[`alchemy.env.example`](alchemy.env.example).
 
 Telemetry has one switch per app: `OTEL_EXPORTER_OTLP_ENDPOINT` set → export on,
 unset → console only (default). Locally, run `bun run telemetry:up` and uncomment
@@ -260,11 +264,12 @@ root supply the implementation — so cross-feature coupling never becomes a web
 
 | Command | Description |
 |---|---|
-| `bun run dev` | Start API and Web through Turbo and Portless using root `.env`. |
+| `bun run dev` | Start API and Web through Turbo and Portless. |
 | `bun run dev:full` | Start Maple, then API and Web. |
-| `bun run db:up` | Start this workspace's configured PostgreSQL container. |
-| `bun run db:down` | Remove its container/network while preserving database data. |
-| `bun run db:destroy` | Remove its container, network, and database volume. |
+| `bun run db:up` | Start the shared PostgreSQL container (all workspaces). |
+| `bun run db:down` | Stop the shared container while preserving all data. |
+| `bun run db:destroy` | Drop this workspace's database; leave the shared server up. |
+| `bun run db:nuke` | Remove the shared container, network, and data volume. |
 | `bun run check-types` | Type-check every package (with Effect compiler diagnostics) plus the Alchemy stack. |
 | `bun run test` | Run the test suite. |
 | `bun run check` | Format and lint. |

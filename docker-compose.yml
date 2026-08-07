@@ -1,3 +1,7 @@
+# Fixed project name → one shared Postgres for every workspace. Each workspace
+# gets its own database inside it (eff_<DEV_INSTANCE>).
+name: effect-template-dev
+
 services:
   postgres:
     image: postgres:17-alpine
@@ -8,7 +12,7 @@ services:
     ports:
       - name: postgres
         target: 5432
-        published: "${POSTGRES_PORT:?Set POSTGRES_PORT in .env}"
+        published: "5432"
         host_ip: 127.0.0.1
         protocol: tcp
     volumes:

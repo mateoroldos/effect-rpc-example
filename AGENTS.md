@@ -11,8 +11,8 @@ add or rename a domain concept, update CONTEXT.md in the same change.
 
 ```bash
 bun install
-cp .env.example .env   # choose a unique DEV_INSTANCE and POSTGRES_PORT
-bun run db:up
+bun run env:setup      # seed each app's .env (create-if-missing)
+bun run db:setup       # start shared Postgres, create + migrate this workspace's db
 bun run dev            # API and Web through Portless
 bun run check-types    # tsc + Effect compiler diagnostics
 bun run test           # vitest

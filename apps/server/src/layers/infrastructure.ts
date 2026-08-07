@@ -1,13 +1,15 @@
 import { DatabasePostgres } from "@effect-template/database/postgres";
 import { Config, Layer, Redacted } from "effect";
 
-/** DATABASE_URL when set (prod/Neon), else built from POSTGRES_PORT for local docker-compose. */
+/** DATABASE_URL when set (prod/Neon), else this workspace's database in the
+ * shared local Postgres: eff_<DEV_INSTANCE> (hyphens → underscores). The
+ * database is created on demand by `db:migrate`. */
 const databaseUrl = Config.redacted("DATABASE_URL").pipe(
   Config.orElse(() =>
-    Config.number("POSTGRES_PORT").pipe(
-      Config.map((port) =>
+    Config.string("DEV_INSTANCE").pipe(
+      Config.map((instance) =>
         Redacted.make(
-          `postgresql://effect_template:effect_template@localhost:${port}/effect_template`
+          `postgresql://effect_template:effect_template@localhost:5432/eff_${instance.replaceAll("-", "_")}`
         )
       )
     )
