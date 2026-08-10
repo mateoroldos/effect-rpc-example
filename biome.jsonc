@@ -1,10 +1,46 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.5.7/schema.json",
-  "extends": ["ultracite/biome/core", "ultracite/biome/svelte"],
+  "extends": [
+    "ultracite/biome/core",
+    "ultracite/biome/svelte",
+    "ultracite/biome/vitest",
+    "ultracite/biome/type-aware"
+  ],
   "files": {
     "includes": ["!!packages/database/drizzle"]
   },
+  "plugins": [
+    "./rules/effect-fn-span.grit",
+    "./rules/no-module-mock.grit",
+    "./rules/no-vague-names.grit",
+    "./rules/no-schema-class.grit"
+  ],
+  "linter": {
+    "rules": {
+      "correctness": {
+        // Biome's resolver can't follow effect v4's exports map or the
+        // workspace `@effect-template/*` subpath exports, so this only produces
+        // false positives here. Cross-package resolution is dependency-cruiser's
+        // job (bun run check-arch).
+        "noUnresolvedImports": "off"
+      }
+    }
+  },
   "overrides": [
+    {
+      "includes": ["**/*.test.ts"],
+      "plugins": ["./rules/no-sleep-in-tests.grit"],
+      "linter": {
+        "rules": {
+          // Test files use root-hoisted test tooling (@effect/vitest) rather than
+          // declaring it per package; that hoisting reads as undeclared to Biome.
+          // Production imports stay guarded.
+          "correctness": {
+            "noUndeclaredDependencies": "off"
+          }
+        }
+      }
+    },
     {
       "includes": ["apps/web/src/lib/components/ui/**/*.svelte"],
       "assist": {

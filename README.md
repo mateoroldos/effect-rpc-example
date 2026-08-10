@@ -292,6 +292,7 @@ root supply the implementation — so cross-feature coupling never becomes a web
 | `bun run check-types` | Type-check every package (with Effect compiler diagnostics) plus the Alchemy stack. |
 | `bun run test` | Run the test suite. |
 | `bun run check` | Format and lint. |
+| `bun run check-arch` | Enforce the dependency arrows (dependency-cruiser). |
 | `bun run knip` | Report unused files, exports, and dependencies. |
 | `bun run db:generate` | Generate a migration from the schema. |
 | `bun run telemetry:up` | Start or reuse the machine-level Maple process. |

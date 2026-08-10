@@ -14,7 +14,10 @@ _Avoid_: Bot, Entity, Record
 
 ### Conventions
 
-Recurring role names. A new capability reuses them.
+Recurring role names. A new capability reuses them. `check` enforces the
+generic ones (`rules/no-vague-names.grit`): a class/interface/type named
+`*Repository`, `*Registry`, `*Manager`, `*Processor`, `*Helper`, or `*DAO` is a
+lint error.
 
 **Directory**:
 A service that owns a collection and the policy over it. Here, the registry of

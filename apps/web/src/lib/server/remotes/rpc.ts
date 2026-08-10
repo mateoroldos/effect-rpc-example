@@ -2,8 +2,8 @@ import { error } from "@sveltejs/kit";
 import { Effect, Filter, Result } from "effect";
 import type { RpcClientError } from "effect/unstable/rpc";
 import { getRequestEvent } from "$app/server";
-import { AppRpcClient } from "../rpc/client";
-import { run } from "../runtime";
+import { AppRpcClient } from "../rpc/client.ts";
+import { run } from "../runtime.ts";
 
 /** Runs an RPC operation and projects its typed failures at the SvelteKit boundary. */
 export const runRpc = async <A, E extends { readonly _tag: string }>(

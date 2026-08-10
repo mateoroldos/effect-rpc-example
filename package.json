@@ -9,6 +9,7 @@
   "scripts": {
     "audit": "bun audit --audit-level=high",
     "check": "ultracite check",
+    "check-arch": "sh scripts/check-arch.sh",
     "check-types": "turbo check-types && tsc -p tsconfig.alchemy.json",
     "db:destroy": "sh scripts/with-instance.sh sh scripts/drop-db.sh",
     "db:down": "docker compose down --remove-orphans",
@@ -37,11 +38,13 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.0",
+    "@effect-template/infra": "workspace:*",
     "@effect/language-service": "^0.87.1",
     "@effect/tsgo": "^0.24.3",
     "@effect/vitest": "4.0.0-beta.102",
     "@types/bun": "catalog:",
     "alchemy": "2.0.0-beta.65",
+    "dependency-cruiser": "^18.1.1",
     "effect": "catalog:",
     "knip": "^6.29.0",
     "portless": "^0.15.5",

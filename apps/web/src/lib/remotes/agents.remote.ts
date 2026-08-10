@@ -3,8 +3,8 @@ import { AgentsRpc } from "@effect-template/rpc/agents";
 import { error } from "@sveltejs/kit";
 import { Match, Schema } from "effect";
 import { form, query, requested } from "$app/server";
-import type { AgentListItem } from "../features/agents/agent-list-item";
-import { runRpc } from "../server/remotes/rpc";
+import type { AgentListItem } from "../features/agents/agent-list-item.ts";
+import { runRpc } from "../server/remotes/rpc.ts";
 
 const persistedAgent = (agent: Agent): AgentListItem => ({
   _tag: "Persisted",

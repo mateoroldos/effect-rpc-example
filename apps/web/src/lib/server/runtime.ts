@@ -11,7 +11,7 @@ import {
   OTEL_EXPORTER_OTLP_HEADERS_JSON,
   OTEL_SERVICE_VERSION,
 } from "$app/env/private";
-import { AppRpcClient } from "./rpc/client";
+import { AppRpcClient } from "./rpc/client.ts";
 
 const serviceName = DEV_INSTANCE
   ? `${DEV_INSTANCE}-web`

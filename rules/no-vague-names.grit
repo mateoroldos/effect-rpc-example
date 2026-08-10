@@ -1,0 +1,15 @@
+// Ubiquitous language (CONTEXT.md): role names must carry meaning.
+// Ban the generic containers — name the concept (Directory, Store,
+// Sender). Substring match, so AgentDirectory passes but AgentManager doesn't.
+// "Persistence" is intentionally omitted: PersistenceError is the documented
+// Store technology-error.
+or {
+  `class $name {}`,
+  `class $name extends $sup {}`,
+  `interface $name {}`,
+  `interface $name extends $sup {}`,
+  `type $name = $t`
+} where {
+  $name <: r".*(?:Repository|Registry|Manager|Processor|Helper|DAO).*",
+  register_diagnostic(span=$name, message="Banned role word (CONTEXT.md). Name the concept, not a generic container: Directory/Store/Sender over Repository/Manager/Registry/Processor/Helper/DAO.")
+}

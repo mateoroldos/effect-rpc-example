@@ -1,0 +1,7 @@
+// Every effectful op gets a named span
+// core default: Effect.fn("Domain.operation")). Flags Effect.fn called with a
+// function directly — an unnamed span. Use Effect.fnUntraced to opt out.
+`Effect.fn($fn)` where {
+  $fn <: not `"$_"`,
+  register_diagnostic(span=$fn, message="Effect.fn needs a span name: Effect.fn(\"Domain.op\")(...). Use Effect.fnUntraced for internal helpers that intentionally skip span metadata.")
+}

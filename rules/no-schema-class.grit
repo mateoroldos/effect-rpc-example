@@ -1,0 +1,9 @@
+// Model records with Schema.Struct + same-name interface, not Schema.Class /
+// Schema.TaggedErrorClass is fine — only bare Class/TaggedClass match.
+`Schema.$variant($_)` where {
+  $variant <: or {
+    `Class`,
+    `TaggedClass`
+  },
+  register_diagnostic(span=$variant, message="Don't model data with Schema.Class/Schema.TaggedClass. Use Schema.Struct(...) plus a same-name interface (Schema.TaggedStruct/TaggedUnion for variants).")
+}

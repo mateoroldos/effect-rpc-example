@@ -17,10 +17,12 @@ bun run dev            # API and Web through Portless
 bun run check-types    # tsc + Effect compiler diagnostics
 bun run test           # vitest
 bun run check          # format + lint (biome)
+bun run check-arch     # dependency-cruiser: the arrows below, enforced
 bun run knip           # dead files / exports / dependencies
 ```
 
-A change is done only when `check-types`, `test`, `check`, and `knip` all pass.
+A change is done only when `check-types`, `test`, `check`, `check-arch`, and
+`knip` all pass.
 
 ## Architecture
 
@@ -34,6 +36,12 @@ Arrows read "depends on". `domain` is the pure sink everyone points at.
 core → domain          rpc → domain          database → core, domain
 web  → rpc, domain      server → core, rpc, database, observability
 ```
+
+These arrows are **enforced**, not aspirational: `bun run check-arch`
+(dependency-cruiser, config in `.dependency-cruiser.cjs`) fails on a reversed
+arrow, an adapter (`database`, `email`) imported outside `apps/server`, or a
+dependency cycle. The allowed-imports table there is the source of truth — edit
+it and these arrows in the same change.
 
 - `packages/domain` — pure shared vocabulary (`Agent`, `AgentId`, `AgentName`); depends on nothing; consumed by web, rpc, core, and database.
 - `packages/core` — application services and the ports they depend on (domain types now live in `domain`).
@@ -107,7 +115,7 @@ export const make = Effect.gen(function* () {
   const store = yield* AgentStore.Service // yield dependencies once, at build time
   const create = Effect.fn("AgentDirectory.create")(function* (input) {
     /* … */
-  }) // every effectful op gets a named span
+  }) // every effectful op gets a named span (enforced: rules/effect-fn-span.grit)
   return Service.of({ create })
 })
 
@@ -311,7 +319,8 @@ Also rejected: a floating (unhandled) Effect, providing implementations outside
 ## Testing
 
 Test through the public interface with real seams — never mock modules. Provide
-a substitute Layer instead:
+a substitute Layer instead. `check` enforces this: `vi.mock`/`jest.mock` and
+arbitrary `Effect.sleep` in tests are grit-rule errors (`rules/*.grit`).
 
 ```ts
 it.layer(
@@ -337,6 +346,9 @@ Use property tests for parsers and branded types.
 
 - Wire concrete Layers only in deployable composition roots: `apps/server` for
   the API and `apps/web/src/lib/server/runtime.ts` for the web server.
+  `check-arch` enforces the import half of this: only `apps/server` may import
+  the `database` and `email` adapter packages. It cannot see *where* in a file a
+  Layer is provided, so that part stays a review rule.
 - Export only what a caller consumes. An in-file-only helper (like a service's
   `make`) stays a non-exported `const` — `knip` cannot flag these because they
   live in entry files, so it is a review rule. Do not widen `exports` for tests.

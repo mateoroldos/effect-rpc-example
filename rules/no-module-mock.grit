@@ -1,0 +1,10 @@
+// Never mock modules
+// Test through the public interface with real seams instead.
+`$obj.mock($args)` where {
+  $obj <: or {
+    `vi`,
+    `vitest`,
+    `jest`
+  },
+  register_diagnostic(span=$args, message="Don't mock modules. Test through the public interface and provide a substitute Layer (layerMemory, PGlite, RpcTest).")
+}

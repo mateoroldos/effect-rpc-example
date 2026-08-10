@@ -1,0 +1,5 @@
+// No arbitrary Effect.sleep in tests. Scoped to *.test.ts
+// via biome.jsonc override. Use TestClock or a deterministic primitive.
+`Effect.sleep($d)` where {
+  register_diagnostic(span=$d, message="No arbitrary Effect.sleep in tests. Use TestClock or a deterministic primitive (Deferred, Latch, Queue).")
+}

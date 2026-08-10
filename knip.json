@@ -3,7 +3,8 @@
   "workspaces": {
     ".": {
       "entry": ["alchemy.run.ts"],
-      "ignore": ["commitlint.config.mjs"]
+      "ignore": ["commitlint.config.mjs"],
+      "ignoreDependencies": ["dependency-cruiser"]
     },
     "apps/web": {
       "entry": ["src/env.ts", "src/**/*.remote.ts"],
