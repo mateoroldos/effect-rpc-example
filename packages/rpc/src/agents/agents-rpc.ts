@@ -1,5 +1,4 @@
 import { Agent, AgentId, AgentName } from "@effect-template/domain/agent";
-import { AgentDirectory } from "@effect-template/core/agent-directory";
 import { Schema } from "effect";
 import { Rpc, RpcGroup } from "effect/unstable/rpc";
 
@@ -7,6 +6,12 @@ import { Rpc, RpcGroup } from "effect/unstable/rpc";
 export class Unavailable extends Schema.TaggedErrorClass<Unavailable>()(
   "AgentsRpc.Unavailable",
   {}
+) {}
+
+/** Indicates that the requested Agent is absent from the directory. */
+export class NotFound extends Schema.TaggedErrorClass<NotFound>()(
+  "AgentsRpc.NotFound",
+  { id: AgentId }
 ) {}
 
 /** The wire input for creating an Agent. */
@@ -25,7 +30,7 @@ export const group = RpcGroup.make(
     success: Agent,
   }),
   Rpc.make("Agents.Get", {
-    error: Schema.Union([AgentDirectory.NotFound, Unavailable]),
+    error: Schema.Union([NotFound, Unavailable]),
     payload: GetAgentInput,
     success: Agent,
   }),
