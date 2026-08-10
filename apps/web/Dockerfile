@@ -6,7 +6,7 @@ WORKDIR /app
 # Prune the monorepo to @effect-template/web + deps.
 FROM base AS prune
 COPY . .
-RUN bunx turbo@2 prune @effect-template/web --docker
+RUN bunx turbo@2.10.7 prune @effect-template/web --docker
 
 # Build needs devDeps (vite, svelte, adapter-node).
 # --ignore-scripts skips the root `prepare` (dev-only tsgo patch).
