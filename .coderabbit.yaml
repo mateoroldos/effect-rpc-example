@@ -1,0 +1,35 @@
+language: en-US
+
+reviews:
+  profile: quiet
+  request_changes_workflow: false
+  fail_commit_status: false
+  high_level_summary: true
+  poem: false
+
+  # CI proves deterministic correctness first. Once every required check passes,
+  # request the semantic pass with `@coderabbitai review` on the PR.
+  auto_review:
+    enabled: false
+
+  # GitHub CI already owns deterministic feedback. Ultracite runs Biome, and
+  # dedicated jobs run Zizmor and surface all check failures. ESLint and Oxlint
+  # are not project tools. Disabling these integrations avoids a second lint
+  # policy and duplicate comments while leaving CodeRabbit's other analyzers on.
+  tools:
+    biome:
+      enabled: false
+    eslint:
+      enabled: false
+    github-checks:
+      enabled: false
+    oxc:
+      enabled: false
+    zizmor:
+      enabled: false
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
+  learnings:
+    scope: local
