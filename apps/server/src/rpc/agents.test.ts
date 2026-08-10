@@ -8,7 +8,7 @@ import { AgentId, AgentName } from "@effect-template/domain/agent";
 import { AgentsRpc } from "@effect-template/rpc/agents";
 import { Crypto, Effect, Layer } from "effect";
 import { RpcTest } from "effect/unstable/rpc";
-import { agentsRpcServerLayer } from "./layers/agents-rpc-server.ts";
+import { agentsHandlersLayer } from "./agents.ts";
 
 const cryptoLayer = Layer.succeed(
   Crypto.Crypto,
@@ -21,7 +21,7 @@ const availableDirectoryLayer = AgentDirectory.layerWithoutDependencies.pipe(
   Layer.provide(layerMemory),
   Layer.provide(cryptoLayer)
 );
-const availableLayer = agentsRpcServerLayer.pipe(
+const availableLayer = agentsHandlersLayer.pipe(
   Layer.provide(availableDirectoryLayer)
 );
 const persistenceFailure = () =>
@@ -39,7 +39,7 @@ const unavailableDirectoryLayer = AgentDirectory.layerWithoutDependencies.pipe(
   ),
   Layer.provide(cryptoLayer)
 );
-const unavailableLayer = agentsRpcServerLayer.pipe(
+const unavailableLayer = agentsHandlersLayer.pipe(
   Layer.provide(unavailableDirectoryLayer)
 );
 

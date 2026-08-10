@@ -3,20 +3,13 @@ import { Layer } from "effect";
 import { HttpRouter, HttpServerResponse } from "effect/unstable/http";
 import { RpcServer } from "effect/unstable/rpc";
 
-import { agentsRpcHandlersLayerPostgres } from "./agents.ts";
-
 const protocolLayer = Layer.mergeAll(
   RpcServer.layerProtocolHttp({ path: "/rpc" }),
   HttpRouter.add("GET", "/health", HttpServerResponse.text("ok"))
 ).pipe(Layer.provide(HttpRouter.layer));
 
-/** HTTP transport preserving its registered RPC handler requirements. */
-export const rpcLayerWithoutDependencies = RpcServer.layer(AppRpc.group).pipe(
+/** HTTP transport for all RPC features; requires their registered handlers. */
+export const rpcServerLayer = RpcServer.layer(AppRpc.group).pipe(
   Layer.provideMerge(protocolLayer),
   Layer.provide(HttpRouter.serve(protocolLayer, { disableLogger: true }))
-);
-
-/** HTTP transport serving all production RPC feature handlers. */
-export const rpcLayer = rpcLayerWithoutDependencies.pipe(
-  Layer.provide(agentsRpcHandlersLayerPostgres)
 );

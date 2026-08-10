@@ -1,5 +1,6 @@
 import { NodeHttpServer } from "@effect/platform-node";
 import { assert, describe, it } from "@effect/vitest";
+import { AgentDirectory } from "@effect-template/core/agent-directory";
 import { AgentStore } from "@effect-template/core/agent-directory/store";
 import { AgentName } from "@effect-template/domain/agent";
 import { AgentsRpc } from "@effect-template/rpc/agents";
@@ -7,8 +8,8 @@ import { Crypto, Effect, Layer } from "effect";
 import { HttpClient, HttpClientRequest } from "effect/unstable/http";
 import { RpcClient, RpcSerialization } from "effect/unstable/rpc";
 
-import { agentsRpcHandlersLayer } from "./layers/agents.ts";
-import { rpcLayerWithoutDependencies } from "./layers/rpc.ts";
+import { agentsHandlersLayer } from "./rpc/agents.ts";
+import { rpcServerLayer } from "./rpc/server.ts";
 
 const cryptoLayer = Layer.succeed(
   Crypto.Crypto,
@@ -17,11 +18,12 @@ const cryptoLayer = Layer.succeed(
     randomBytes: (size) => new Uint8Array(size),
   })
 );
-const agentsRpcHandlersTestLayer = agentsRpcHandlersLayer.pipe(
+const agentsRpcHandlersTestLayer = agentsHandlersLayer.pipe(
+  Layer.provide(AgentDirectory.layerWithoutDependencies),
   Layer.provide(AgentStore.layerMemory),
   Layer.provide(cryptoLayer)
 );
-const serverLayer = rpcLayerWithoutDependencies.pipe(
+const serverLayer = rpcServerLayer.pipe(
   Layer.provide(agentsRpcHandlersTestLayer)
 );
 const clientProtocolLayer = RpcClient.layerProtocolHttp({

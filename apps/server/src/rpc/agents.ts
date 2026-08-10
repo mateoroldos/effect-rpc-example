@@ -1,13 +1,14 @@
 import { AgentDirectory } from "@effect-template/core/agent-directory";
+import { AgentStorePostgres } from "@effect-template/database/agents/postgres";
 import type { AgentId } from "@effect-template/domain/agent";
 import { AgentsRpc } from "@effect-template/rpc/agents";
-import { Effect } from "effect";
+import { Effect, Layer } from "effect";
 
 const annotateAgentId = (id: AgentId) =>
   Effect.annotateCurrentSpan({ "agent.id": id });
 
-/** Provides Agent RPC handlers backed by AgentDirectory.Service. */
-export const agentsRpcServerLayer = AgentsRpc.group.toLayer(
+/** Agent RPC handlers: translate AgentDirectory results into wire responses. */
+export const agentsHandlersLayer = AgentsRpc.group.toLayer(
   Effect.gen(function* makeAgentsRpcHandlers() {
     const directory = yield* AgentDirectory.Service;
 
@@ -44,4 +45,10 @@ export const agentsRpcServerLayer = AgentsRpc.group.toLayer(
       ),
     });
   })
+);
+
+/** Production wiring: handlers backed by the PostgreSQL persistence adapter. */
+export const agentsHandlersLayerPostgres = agentsHandlersLayer.pipe(
+  Layer.provide(AgentDirectory.layerWithoutDependencies),
+  Layer.provide(AgentStorePostgres.layer)
 );

@@ -2,7 +2,7 @@ import { BunRuntime } from "@effect/platform-bun";
 import { DatabasePostgres } from "@effect-template/database/postgres";
 import { Effect } from "effect";
 
-import { postgresClientLayer } from "./layers/infrastructure.ts";
+import { postgresClientLayer } from "./infra/database.ts";
 
 // Standalone entry: `bun run src/migrate.ts`. Run locally before `dev`, and as a
 // pre-deploy step in production — the server itself boots without migrating.
