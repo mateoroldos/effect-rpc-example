@@ -5,15 +5,11 @@
   "type": "module",
   "exports": "./src/index.ts",
   "scripts": {
+    "check-types": "tsc",
+    "db:migrate": "bun run src/migrate.ts",
     "dev": "portless run --name \"${DEV_INSTANCE:?run 'bun run dev' from the repo root}.api.effect-template\"",
     "dev:app": "bun run --watch src/index.ts",
-    "start": "bun run src/index.ts",
-    "db:migrate": "bun run src/migrate.ts",
-    "check-types": "tsc"
-  },
-  "portless": {
-    "name": "api.effect-template",
-    "script": "dev:app"
+    "start": "bun run src/index.ts"
   },
   "dependencies": {
     "@effect-template/core": "workspace:*",
@@ -27,5 +23,9 @@
   },
   "devDependencies": {
     "@effect/platform-node": "4.0.0-beta.102"
+  },
+  "portless": {
+    "name": "api.effect-template",
+    "script": "dev:app"
   }
 }
