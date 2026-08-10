@@ -6,7 +6,7 @@ WORKDIR /app
 # Prune the monorepo to @effect-template/server + deps.
 FROM base AS prune
 COPY . .
-RUN bunx turbo@2 prune @effect-template/server --docker
+RUN bunx turbo@2.10.7 prune @effect-template/server --docker
 
 # Runs TS directly (no build) → --production drops devDeps.
 # --ignore-scripts skips the root `prepare` (dev-only tsgo patch).

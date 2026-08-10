@@ -152,6 +152,19 @@ the deployment's secret store. Deployments must set `APP_ENV` and should inject
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | absent (export disabled) |
 | `OTEL_EXPORTER_OTLP_HEADERS_JSON` | absent (JSON object of exporter headers) |
 
+## GitHub automation
+
+After creating a repository from this template, configure the repository settings that workflows cannot store in Git:
+
+1. Protect `main` and require the always-on CI, Commitlint, and PR Title checks. Do not require the path-filtered Zizmor workflow globally.
+2. Allow squash and rebase merges. Commitlint validates commits retained by a rebase; PR Title validates the commit created by a squash.
+3. Create a protected `production` environment with `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `NEON_API_KEY`, and `AXIOM_TOKEN`. Add `APP_DOMAIN` as an optional environment variable.
+4. Install the Renovate GitHub App. Renovate updates Bun dependencies, the shared catalog, and digest-pinned GitHub Actions.
+
+The labeler creates its configured labels on same-repository pull requests. Fork pull requests receive a read-only token, so labeling them is intentionally best-effort. If you enable GitHub's merge queue, add the `merge_group` trigger to each required workflow before requiring the queue.
+
+Infrastructure deployment runs after matching pushes to `main` and serializes all production changes. Keep direct pushes disabled so every automatic deployment has already passed protected pull-request checks. `harden-runner` starts in egress audit mode; review its observed endpoints before switching production deployment to an explicit block-mode allowlist.
+
 ## Infrastructure
 
 Two planes. [Alchemy](https://alchemy.run) provisions the cloud primitives; the

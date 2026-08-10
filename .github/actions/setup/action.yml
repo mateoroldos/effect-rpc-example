@@ -1,0 +1,25 @@
+name: Setup
+description: Install the pinned Bun, restore the dependency cache, and install deps.
+
+runs:
+  using: composite
+  steps:
+    - uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2.0.2
+      with:
+        bun-version-file: package.json
+
+    # setup-bun caches only the Bun binary — never dependencies. Cache the
+    # install store ourselves, keyed on the text lockfile.
+    - name: Cache Bun install store
+      uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+      with:
+        path: ~/.bun/install/cache
+        key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+        restore-keys: ${{ runner.os }}-bun-
+
+    # --ignore-scripts: never run a lifecycle script implicitly (matches the
+    # Dockerfile). A job that needs a specific script — e.g. the Effect tsgo
+    # patch in typecheck — runs it explicitly as its own step.
+    - name: Install dependencies
+      shell: bash
+      run: bun install --frozen-lockfile --ignore-scripts

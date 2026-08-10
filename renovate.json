@@ -1,0 +1,50 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "packageRules": [
+    {
+      "description": "Effect runtime packages are on a beta channel and must move in lockstep — allow prereleases, one grouped PR",
+      "matchPackageNames": [
+        "effect",
+        "@effect/opentelemetry",
+        "@effect/platform-*",
+        "@effect/sql-*",
+        "@effect/vitest"
+      ],
+      "groupName": "effect runtime",
+      "ignoreUnstable": false,
+      "respectLatest": false
+    },
+    {
+      "description": "alchemy is an intentional beta pin — allow prereleases",
+      "matchPackageNames": ["alchemy"],
+      "ignoreUnstable": false,
+      "respectLatest": false
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update Bun `catalog` version pins — no native Renovate support. VERIFY with `renovate --dry-run`.",
+      "managerFilePatterns": ["/(^|/)package\\.json$/"],
+      "matchStringsStrategy": "recursive",
+      "matchStrings": [
+        "\"catalog\"\\s*:\\s*\\{[^}]*\\}",
+        "\"(?<depName>@?[a-zA-Z0-9._/-]+)\"\\s*:\\s*\"(?<currentValue>[^\"]+)\""
+      ],
+      "datasourceTemplate": "npm"
+    },
+    {
+      "customType": "regex",
+      "description": "Keep the Docker prune command aligned with the root Turbo dependency",
+      "managerFilePatterns": ["/(^|/)Dockerfile$/"],
+      "matchStrings": ["bunx turbo@(?<currentValue>[0-9.]+) prune"],
+      "depNameTemplate": "turbo",
+      "datasourceTemplate": "npm"
+    }
+  ]
+}

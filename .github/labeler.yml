@@ -1,0 +1,24 @@
+apps:
+  - changed-files:
+      - any-glob-to-any-file: "apps/**"
+web:
+  - changed-files:
+      - any-glob-to-any-file: "apps/web/**"
+server:
+  - changed-files:
+      - any-glob-to-any-file: "apps/server/**"
+packages:
+  - changed-files:
+      - any-glob-to-any-file: "packages/**"
+infra:
+  - changed-files:
+      - any-glob-to-any-file: ["alchemy.run.ts", "packages/infra/**"]
+ci:
+  - changed-files:
+      - any-glob-to-any-file: [".github/**"]
+deps:
+  - changed-files:
+      - any-glob-to-any-file: ["**/package.json", "bun.lock", "renovate.json"]
+docs:
+  - changed-files:
+      - any-glob-to-any-file: ["**/*.md"]

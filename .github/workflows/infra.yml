@@ -1,0 +1,53 @@
+name: Infra (Alchemy)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "alchemy.run.ts"
+      - "tsconfig.alchemy.json"
+      - "packages/infra/**"
+      - "package.json"
+      - "bun.lock"
+      - ".github/actions/setup/action.yml"
+      - ".github/workflows/infra.yml"
+  workflow_dispatch: {}
+
+# One global lane for prod infra: a manual dispatch can never race a push,
+# so two runs never touch the shared Cloudflare-DO state at once.
+concurrency:
+  group: infra-prod
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  deploy:
+    name: Deploy prod infra
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    steps:
+      # Guards the prod provider tokens below. Start in `audit` to learn the
+      # egress baseline (Cloudflare/Neon/Axiom APIs), then switch to
+      # `egress-policy: block` + `allowed-endpoints` to stop exfiltration.
+      - uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup # prepare not needed — alchemy runs via bun
+      # `alchemy deploy --yes --stage prod`. State lives in the shared Cloudflare
+      # DO store; the token below re-fetches its bearer token each run.
+      - name: alchemy deploy --stage prod
+        run: bun run infra:deploy:prod
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          AXIOM_TOKEN: ${{ secrets.AXIOM_TOKEN }}
+          # Optional: set as a repo variable to provision prod custom domains.
+          APP_DOMAIN: ${{ vars.APP_DOMAIN }}
