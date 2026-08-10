@@ -19,17 +19,19 @@ tests through real seams.
 
 Dependencies point one way; `apps/server` is the only place concrete Layers meet.
 
+Arrows read "depends on". `domain` is the pure sink everyone points at.
+
 ```txt
-database ─→ core ←─ rpc
-                ↑
-              server
+core → domain          rpc → domain          database → core, domain
+web  → rpc, domain      server → core, rpc, database
 ```
 
 | Package | Responsibility |
 |---|---|
-| `packages/core` | Domain types, application services, and the ports they depend on. |
+| `packages/domain` | Pure shared vocabulary — branded domain types with no dependencies. |
+| `packages/core` | Application services and the ports they depend on. |
 | `packages/database` | PostgreSQL lifecycle and adapters implementing core ports. |
-| `packages/rpc` | Transport-independent RPC contracts and their handlers. |
+| `packages/rpc` | Transport-independent RPC contracts; handlers live in `apps/server`. |
 | `apps/server` | Composition root — provides every Layer and launches the API process. |
 | `apps/web` | SvelteKit UI — remote functions call the typed Agents RPC server-side. |
 
@@ -213,15 +215,17 @@ push. The server runs its migration as a **pre-deploy command** and exposes
 
 Follow the dependency arrows outward. Each step has a matching test tier.
 
-1. **Domain** (`core`) — a Schema with branded, parsed values. → property test.
+1. **Domain** (`domain` if shared; else beside its port in `core`) — a Schema
+   with branded, parsed values. → property test.
 2. **Port** (`core`) — the narrowest interface the operation needs, beside the
    service that uses it.
 3. **Service** (`core`) — sequence effects and policy through the port; return
    typed errors. → in-memory test.
 4. **Adapter** (`database`) — implement the port against Postgres; translate
    technology errors. → real-database test.
-5. **Contract + handler** (`rpc`) — the RPC entry and a handler that projects
-   application errors to safe transport errors. → contract test.
+5. **Contract** (`rpc`) **+ handler** (`apps/server`) — the RPC entry in `rpc`,
+   and an inbound-adapter handler that projects application errors to safe
+   transport errors. → contract test.
 6. **Wire it** (`apps/server`) — provide the new Layers. → end-to-end test.
 
 ## Testing
@@ -238,20 +242,22 @@ the real interface, and no modules are mocked.
 
 ## Scaling
 
-The layout scales by adding **module directories inside pure packages**, not by a
-package per feature. Domain and application services are pure, so they grow as
-sibling module directories in `core` — the domain kept separate from the services
-that use it:
+The layout scales by adding **module directories**, not a package per feature.
+A pure type graduates to `packages/domain` when more than one layer reasons about
+it (web renders it, rpc serializes it, services persist it); a value used by a
+single port stays beside that port in `core`. Application services grow as
+sibling module directories in `core`:
 
 ```txt
-core/src/agent/            domain module (pure value types)
-core/src/agent-directory/  an application service + its port
-core/src/billing/          another domain module
-core/src/billing-ledger/   a service over it + its port
+domain/src/agent/            shared vocabulary — many consumers (web, rpc, core, db)
+core/src/agent-directory/    an application service + its port (AgentStore)
+core/src/email/email-sender  a port + its port-local value types (single consumer)
 ```
 
 Split a **new package** only when there is a real boundary:
 
+- pure types are shared across apps → `packages/domain` (why it is a package, not
+  a `core` directory: web and rpc consume it without reaching core's services);
 - an adapter carries a heavy dependency → its own package, keeping `core` pure
   (e.g. a `billing-stripe` package owns the Stripe SDK, as `database` owns pg);
 - code is reused across multiple apps, or is itself a deployable surface.

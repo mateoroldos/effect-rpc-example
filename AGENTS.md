@@ -28,25 +28,28 @@ Dependencies point one way. Packages leave their Layer requirements open;
 `apps/server` is the composition root that provides the concrete implementations
 — database, crypto, HTTP. Tests provide their own substitutes.
 
+Arrows read "depends on". `domain` is the pure sink everyone points at.
+
 ```txt
-database ─→ core ←─ rpc
-     ↑                 ↑
-   server ─→ observability ←─ web
+core → domain          rpc → domain          database → core, domain
+web  → rpc, domain      server → core, rpc, database, observability
 ```
 
-- `packages/core` — domain types, application services, and the ports they depend on.
+- `packages/domain` — pure shared vocabulary (`Agent`, `AgentId`, `AgentName`); depends on nothing; consumed by web, rpc, core, and database.
+- `packages/core` — application services and the ports they depend on (domain types now live in `domain`).
 - `packages/database` — PostgreSQL adapters implementing core ports, drizzle config, schemas, and migrations.
 - `packages/observability` — reusable server telemetry adapter; applications choose its configuration.
-- `packages/rpc` — transport-independent RPC contracts and handlers.
+- `packages/rpc` — transport-independent RPC contracts; the concrete handlers are an inbound adapter in `apps/server`.
 - `apps/server` — API composition root; provides concrete database, RPC, and telemetry Layers.
 - `apps/web` — web composition root and traced server-side RPC client.
 
 Domain code is pure (no I/O, time, randomness, config). Depend on ports, never
 concrete adapters — only the composition root names implementations. Add a
-capability as new **module directories** in `core`: a pure domain module
-(`agent/`) and, separately, each application service beside its port
-(`agent-directory/`). Reach for a new **package** only at a real boundary — an
-adapter's heavy dependency, cross-app reuse, or a deployable.
+capability as new **module directories**: pure shared types in `domain`
+(`agent/`), and each application service beside its port in `core`
+(`agent-directory/`). See **Domain & schemas** for when a type earns `domain`
+versus staying beside its port. Reach for a new **package** only at a real
+boundary — an adapter's heavy dependency, cross-app reuse, or a deployable.
 
 ## Web component organization
 
@@ -121,7 +124,7 @@ values inside the method that uses them.
 ## Domain & schemas
 
 Parse untrusted input into branded types at the edge; pass domain types inward
-(see `agent.ts`):
+(see `packages/domain/src/agent/agent.ts`):
 
 ```ts
 export const AgentId = Schema.String.pipe(
@@ -130,6 +133,15 @@ export const AgentId = Schema.String.pipe(
 )
 export type AgentId = typeof AgentId.Type
 ```
+
+**Where a domain type lives.** `packages/domain` holds *shared vocabulary* — pure
+types the system reasons about in more than one place (web renders them, rpc
+serializes them, core and database persist them). Promote a type to `domain`
+when a second independent consumer needs it or it crosses the client/server
+boundary. Keep a pure type **beside its port** when one service is its only
+consumer — purity alone does not earn promotion. `Agent`/`AgentId` live in
+`domain`; `EmailAddress`/`EmailMessage` stay in `core/email/email-sender.ts` as
+the `EmailSender` port's input contract.
 
 ## Full-stack RPC feature
 
@@ -145,7 +157,7 @@ apps/web/src/routes/+page.svelte
         → apps/web/src/lib/server/runtime.ts              ManagedRuntime
           → HTTP /rpc
             → apps/server/src/layers/rpc.ts              AppRpc server
-              → packages/rpc/src/agents/agents-rpc-server.ts
+              → apps/server/src/layers/agents-rpc-server.ts  Agent handlers (inbound adapter)
                 → packages/core/src/agent-directory/agent-directory.ts
                   → packages/core AgentStore port
                     → packages/database PostgreSQL adapter
@@ -156,7 +168,7 @@ apps/web/src/routes/+page.svelte
 Schemas have one owner and are composed outward:
 
 ```txt
-core domain schemas
+domain schemas (packages/domain)
   AgentName, AgentId, Agent
     ↓
 rpc operation schemas
@@ -167,8 +179,8 @@ SvelteKit remote validation
   Schema.toStandardSchemaV1(AgentsRpc.CreateAgentInput)
 ```
 
-- `core` owns domain values and invariants.
-- `rpc` owns named wire input schemas and reuses core schemas inside them.
+- `domain` owns domain values and invariants; `core` services build on them.
+- `rpc` owns named wire input schemas and reuses domain schemas inside them.
 - `web` reuses the RPC input schema; it does not restate DTO validation.
 - Name schemas only for real payloads. An operation with no input omits
   `payload`; never invent an empty struct.
