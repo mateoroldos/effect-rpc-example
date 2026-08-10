@@ -1,14 +1,14 @@
 import { assert, describe, it } from "@effect/vitest";
-import { AgentId, AgentName } from "@effect-template/domain/agent";
 import { AgentDirectory } from "@effect-template/core/agent-directory";
 import {
   AgentStore,
   layerMemory,
 } from "@effect-template/core/agent-directory/store";
+import { AgentId, AgentName } from "@effect-template/domain/agent";
+import { AgentsRpc } from "@effect-template/rpc/agents";
 import { Crypto, Effect, Layer } from "effect";
 import { RpcTest } from "effect/unstable/rpc";
-import { AgentsRpc } from "./agents-rpc.ts";
-import { AgentsRpcServer } from "./agents-rpc-server.ts";
+import { agentsRpcServerLayer } from "./layers/agents-rpc-server.ts";
 
 const cryptoLayer = Layer.succeed(
   Crypto.Crypto,
@@ -21,7 +21,7 @@ const availableDirectoryLayer = AgentDirectory.layerWithoutDependencies.pipe(
   Layer.provide(layerMemory),
   Layer.provide(cryptoLayer)
 );
-const availableLayer = AgentsRpcServer.layer.pipe(
+const availableLayer = agentsRpcServerLayer.pipe(
   Layer.provide(availableDirectoryLayer)
 );
 const persistenceFailure = () =>
@@ -39,7 +39,7 @@ const unavailableDirectoryLayer = AgentDirectory.layerWithoutDependencies.pipe(
   ),
   Layer.provide(cryptoLayer)
 );
-const unavailableLayer = AgentsRpcServer.layer.pipe(
+const unavailableLayer = agentsRpcServerLayer.pipe(
   Layer.provide(unavailableDirectoryLayer)
 );
 
@@ -63,7 +63,7 @@ describe("agents RPC", () => {
       )
     );
 
-    test.effect("preserves AgentDirectory.NotFound", () =>
+    test.effect("projects a missing Agent to AgentsRpc.NotFound", () =>
       Effect.scoped(
         Effect.gen(function* () {
           const client = yield* RpcTest.makeClient(AgentsRpc.group);
@@ -72,7 +72,7 @@ describe("agents RPC", () => {
           );
 
           assert.deepInclude(error, {
-            _tag: "AgentDirectory.NotFound",
+            _tag: "AgentsRpc.NotFound",
             id: unknownId,
           });
         })
