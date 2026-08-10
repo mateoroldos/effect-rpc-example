@@ -1,0 +1,18 @@
+{
+  "name": "@effect-template/domain",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./agent": "./src/agent/agent.ts"
+  },
+  "scripts": {
+    "check-types": "tsc"
+  },
+  "dependencies": {
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:"
+  }
+}

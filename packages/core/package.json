@@ -4,7 +4,6 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./agent": "./src/agent/agent.ts",
     "./agent-directory": "./src/agent-directory/agent-directory.ts",
     "./agent-directory/store": "./src/agent-directory/agent-store.ts",
     "./email": "./src/email/email-sender.ts"
@@ -13,6 +12,7 @@
     "check-types": "tsc"
   },
   "dependencies": {
+    "@effect-template/domain": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

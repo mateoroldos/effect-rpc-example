@@ -1,5 +1,5 @@
-import { Agent, type AgentId } from "@effect-template/core/agent";
 import { AgentStore } from "@effect-template/core/agent-directory/store";
+import { Agent, type AgentId } from "@effect-template/domain/agent";
 import { eq } from "drizzle-orm";
 import type { EffectPgDatabase } from "drizzle-orm/effect-postgres";
 import { Effect, Layer, Option, Schema } from "effect";

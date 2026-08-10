@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@effect-template/core": "workspace:*",
+    "@effect-template/domain": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

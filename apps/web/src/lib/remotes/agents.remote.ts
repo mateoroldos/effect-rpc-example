@@ -1,4 +1,4 @@
-import type { Agent } from "@effect-template/core/agent";
+import type { Agent } from "@effect-template/domain/agent";
 import { AgentsRpc } from "@effect-template/rpc/agents";
 import { error } from "@sveltejs/kit";
 import { Match, Schema } from "effect";

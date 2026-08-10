@@ -26,6 +26,7 @@
       "dependencies": {
         "@effect-template/core": "workspace:*",
         "@effect-template/database": "workspace:*",
+        "@effect-template/domain": "workspace:*",
         "@effect-template/email": "workspace:*",
         "@effect-template/observability": "workspace:*",
         "@effect-template/rpc": "workspace:*",
@@ -40,6 +41,7 @@
       "name": "@effect-template/web",
       "version": "0.0.0",
       "dependencies": {
+        "@effect-template/domain": "workspace:*",
         "@effect-template/observability": "workspace:*",
         "@effect-template/rpc": "workspace:*",
         "@effect/platform-node": "catalog:",
@@ -71,6 +73,7 @@
       "name": "@effect-template/core",
       "version": "0.0.0",
       "dependencies": {
+        "@effect-template/domain": "workspace:*",
         "effect": "catalog:",
       },
       "devDependencies": {
@@ -82,6 +85,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@effect-template/core": "workspace:*",
+        "@effect-template/domain": "workspace:*",
         "@effect/sql-pg": "4.0.0-beta.102",
         "drizzle-orm": "1.0.0-rc.4",
         "effect": "catalog:",
@@ -93,6 +97,16 @@
         "@types/bun": "catalog:",
         "@types/pg": "^8.20.3",
         "drizzle-kit": "1.0.0-rc.4",
+      },
+    },
+    "packages/domain": {
+      "name": "@effect-template/domain",
+      "version": "0.0.0",
+      "dependencies": {
+        "effect": "catalog:",
+      },
+      "devDependencies": {
+        "@types/bun": "catalog:",
       },
     },
     "packages/email": {
@@ -128,6 +142,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@effect-template/core": "workspace:*",
+        "@effect-template/domain": "workspace:*",
         "effect": "catalog:",
       },
       "devDependencies": {
@@ -242,6 +257,8 @@
     "@effect-template/core": ["@effect-template/core@workspace:packages/core"],
 
     "@effect-template/database": ["@effect-template/database@workspace:packages/database"],
+
+    "@effect-template/domain": ["@effect-template/domain@workspace:packages/domain"],
 
     "@effect-template/email": ["@effect-template/email@workspace:packages/email"],
 

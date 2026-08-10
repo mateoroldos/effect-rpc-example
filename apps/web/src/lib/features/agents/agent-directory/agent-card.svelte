@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Agent } from "@effect-template/core/agent";
+  import type { Agent } from "@effect-template/domain/agent";
   import Robot from "phosphor-svelte/lib/Robot";
   import {
     Card,

@@ -1,4 +1,4 @@
-import type { AgentId } from "@effect-template/core/agent";
+import type { AgentId } from "@effect-template/domain/agent";
 import { AgentDirectory } from "@effect-template/core/agent-directory";
 import { Effect } from "effect";
 import { AgentsRpc } from "./agents-rpc.ts";

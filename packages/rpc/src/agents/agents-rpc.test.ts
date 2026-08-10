@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest";
-import { AgentId, AgentName } from "@effect-template/core/agent";
+import { AgentId, AgentName } from "@effect-template/domain/agent";
 import { AgentDirectory } from "@effect-template/core/agent-directory";
 import {
   AgentStore,

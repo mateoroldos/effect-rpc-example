@@ -1,7 +1,7 @@
 import { NodeHttpServer } from "@effect/platform-node";
 import { assert, describe, it } from "@effect/vitest";
-import { AgentName } from "@effect-template/core/agent";
 import { AgentStore } from "@effect-template/core/agent-directory/store";
+import { AgentName } from "@effect-template/domain/agent";
 import { AgentsRpc } from "@effect-template/rpc/agents";
 import { Crypto, Effect, Layer } from "effect";
 import { HttpClient, HttpClientRequest } from "effect/unstable/http";

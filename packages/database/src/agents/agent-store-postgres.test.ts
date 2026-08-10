@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest";
-import { Agent, AgentId, AgentName } from "@effect-template/core/agent";
 import { AgentStore } from "@effect-template/core/agent-directory/store";
+import { Agent, AgentId, AgentName } from "@effect-template/domain/agent";
 import { Effect, Layer, Option } from "effect";
 
 import { databasePgliteLayer } from "../test/database-pglite.ts";

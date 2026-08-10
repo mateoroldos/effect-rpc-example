@@ -1,6 +1,5 @@
+import type { Agent, AgentId } from "@effect-template/domain/agent";
 import { Context, Effect, Layer, Option, Ref, Schema } from "effect";
-
-import type { Agent, AgentId } from "../agent/agent.ts";
 
 /** Persistence authority required by the Agent Directory. */
 export interface Interface {

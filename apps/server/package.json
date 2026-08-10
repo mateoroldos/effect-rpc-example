@@ -18,6 +18,7 @@
   "dependencies": {
     "@effect-template/core": "workspace:*",
     "@effect-template/database": "workspace:*",
+    "@effect-template/domain": "workspace:*",
     "@effect-template/email": "workspace:*",
     "@effect-template/observability": "workspace:*",
     "@effect-template/rpc": "workspace:*",

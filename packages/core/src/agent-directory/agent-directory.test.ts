@@ -1,7 +1,6 @@
 import { assert, describe, it } from "@effect/vitest";
+import { AgentId, AgentName } from "@effect-template/domain/agent";
 import { Crypto, Effect, Layer, PlatformError } from "effect";
-
-import { AgentId, AgentName } from "../agent/agent.ts";
 import { AgentDirectory } from "./agent-directory.ts";
 import { layerMemory } from "./agent-store.ts";
 

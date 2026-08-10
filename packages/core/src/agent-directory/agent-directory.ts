@@ -1,6 +1,5 @@
+import { Agent, AgentId, type AgentName } from "@effect-template/domain/agent";
 import { Context, Crypto, Effect, Layer, Option, Schema } from "effect";
-
-import { Agent, AgentId, type AgentName } from "../agent/agent.ts";
 import { AgentStore } from "./agent-store.ts";
 
 /** Application operations for maintaining the directory of known Agents. */

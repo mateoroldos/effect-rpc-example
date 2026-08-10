@@ -1,4 +1,4 @@
-import { Agent, AgentId, AgentName } from "@effect-template/core/agent";
+import { Agent, AgentId, AgentName } from "@effect-template/domain/agent";
 import { AgentDirectory } from "@effect-template/core/agent-directory";
 import { Schema } from "effect";
 import { Rpc, RpcGroup } from "effect/unstable/rpc";
