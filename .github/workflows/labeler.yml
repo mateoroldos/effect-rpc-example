@@ -12,6 +12,9 @@ jobs:
   label:
     name: Label by path
     runs-on: ubuntu-latest
+    # Fork PRs get a read-only token, so labeling can only fail. Skip them
+    # (neutral, not red) — same-repo PRs still label. See README GitHub automation.
+    if: ${{ github.event.pull_request.head.repo.fork == false }}
     permissions:
       contents: read
       issues: write # required to create labels in repositories made from the template

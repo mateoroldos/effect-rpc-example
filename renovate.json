@@ -40,7 +40,7 @@
     },
     {
       "customType": "regex",
-      "description": "Keep the Docker prune command aligned with the root Turbo dependency",
+      "description": "Pin the Docker prune Turbo to a current release — Renovate bumps this independently of the root package.json range",
       "managerFilePatterns": ["/(^|/)Dockerfile$/"],
       "matchStrings": ["bunx turbo@(?<currentValue>[0-9.]+) prune"],
       "depNameTemplate": "turbo",
