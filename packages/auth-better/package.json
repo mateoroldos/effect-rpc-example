@@ -1,0 +1,18 @@
+{
+  "name": "@effect-template/auth-better",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check-types": "tsc"
+  },
+  "dependencies": {
+    "@better-auth/drizzle-adapter": "1.7.0-rc.5",
+    "better-auth": "1.7.0-rc.5",
+    "drizzle-orm": "catalog:"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:",
+    "auth": "1.7.0-rc.5"
+  }
+}

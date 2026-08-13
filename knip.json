@@ -6,6 +6,10 @@
       "ignore": ["commitlint.config.mjs"],
       "ignoreDependencies": ["dependency-cruiser"]
     },
+    "packages/auth-better": {
+      "entry": ["src/schema-config.ts"],
+      "ignoreDependencies": ["@better-auth/drizzle-adapter", "auth"]
+    },
     "apps/web": {
       "entry": ["src/env.ts", "src/**/*.remote.ts"],
       "ignore": ["src/lib/components/ui/**/index.ts"],
