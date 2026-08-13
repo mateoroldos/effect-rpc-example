@@ -8,6 +8,8 @@
   ],
   "scripts": {
     "audit": "bun audit --audit-level=high",
+    "auth:schema:check": "bun scripts/auth-schema.ts check",
+    "auth:schema:generate": "bun scripts/auth-schema.ts generate",
     "check": "ultracite check",
     "check-arch": "sh scripts/check-arch.sh",
     "check-types": "turbo check-types && tsc -p tsconfig.alchemy.json",

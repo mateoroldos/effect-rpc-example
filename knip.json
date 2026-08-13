@@ -8,7 +8,7 @@
     },
     "packages/auth-better": {
       "entry": ["src/schema-config.ts"],
-      "ignoreDependencies": ["@better-auth/drizzle-adapter", "auth"]
+      "ignoreDependencies": ["auth"]
     },
     "apps/web": {
       "entry": ["src/env.ts", "src/**/*.remote.ts"],
