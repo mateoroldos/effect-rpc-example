@@ -30,7 +30,8 @@
     "knip": "knip",
     "prepare": "./scripts/prepare-effect.sh && effect-tsgo patch",
     "telemetry:up": "./scripts/start-maple.sh",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:integration": "bun run db:up && vitest run --config vitest.integration.config.ts"
   },
   "overrides": {
     "@effect/platform-node-shared": "4.0.0-beta.102",
@@ -46,6 +47,7 @@
     "@effect/vitest": "4.0.0-beta.102",
     "@types/bun": "catalog:",
     "alchemy": "2.0.0-beta.65",
+    "auth": "1.7.0-rc.5",
     "dependency-cruiser": "^18.1.1",
     "effect": "catalog:",
     "knip": "^6.29.0",

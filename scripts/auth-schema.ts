@@ -14,7 +14,8 @@ const generatedSchema = `packages/database/src/auth/.generated-${randomUUID()}.t
 try {
   run([
     "bunx",
-    "auth@1.7.0-rc.5",
+    "--no-install",
+    "auth",
     "generate",
     "--config",
     "packages/auth-better/src/schema-config.ts",

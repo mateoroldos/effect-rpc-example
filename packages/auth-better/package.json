@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    "./config": "./src/config.ts"
+  },
   "scripts": {
     "check-types": "tsc"
   },
@@ -12,7 +15,6 @@
     "drizzle-orm": "catalog:"
   },
   "devDependencies": {
-    "@types/bun": "catalog:",
-    "auth": "1.7.0-rc.5"
+    "@types/bun": "catalog:"
   }
 }
