@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./postgres": "./src/postgres/index.ts",
+    "./auth-schema": "./src/auth/schema.ts",
     "./agents/postgres": "./src/agents/agent-store-postgres/index.ts"
   },
   "scripts": {
@@ -14,16 +15,16 @@
   "dependencies": {
     "@effect-template/core": "workspace:*",
     "@effect-template/domain": "workspace:*",
-    "@effect/sql-pg": "4.0.0-beta.102",
+    "@effect/sql-pg": "catalog:",
     "drizzle-orm": "catalog:",
     "effect": "catalog:",
-    "pg": "^8.22.0"
+    "pg": "catalog:"
   },
   "devDependencies": {
     "@effect/sql-pglite": "4.0.0-beta.102",
     "@electric-sql/pglite": "^0.5.4",
     "@types/bun": "catalog:",
-    "@types/pg": "^8.20.3",
+    "@types/pg": "catalog:",
     "drizzle-kit": "1.0.0-rc.4"
   }
 }

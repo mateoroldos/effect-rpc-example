@@ -19,10 +19,13 @@
     "@effect-template/observability": "workspace:*",
     "@effect-template/rpc": "workspace:*",
     "@effect/platform-bun": "4.0.0-beta.102",
-    "effect": "catalog:"
+    "@effect/sql-pg": "catalog:",
+    "effect": "catalog:",
+    "pg": "catalog:"
   },
   "devDependencies": {
-    "@effect/platform-node": "4.0.0-beta.102"
+    "@effect/platform-node": "4.0.0-beta.102",
+    "@types/pg": "catalog:"
   },
   "portless": {
     "name": "api.effect-template",

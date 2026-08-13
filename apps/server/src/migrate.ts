@@ -1,13 +1,20 @@
 import { BunRuntime } from "@effect/platform-bun";
 import { DatabasePostgres } from "@effect-template/database/postgres";
-import { Effect } from "effect";
+import { Effect, Layer } from "effect";
 
-import { postgresClientLayer } from "./infra/database.ts";
+import { effectDatabaseLayer } from "./infra/database.ts";
+import { PostgresPool } from "./infra/postgres-pool/index.ts";
 
 // Standalone entry: `bun run src/migrate.ts`. Run locally before `dev`, and as a
 // pre-deploy step in production — the server itself boots without migrating.
 // This is an application entry point: the one place Effect.provide belongs.
-BunRuntime.runMain(
-  // @effect-diagnostics-next-line strictEffectProvide:off
-  DatabasePostgres.runMigrations.pipe(Effect.provide(postgresClientLayer))
+const migrationLayer = effectDatabaseLayer.pipe(
+  Layer.provide(PostgresPool.layer)
 );
+
+const migrate = DatabasePostgres.runMigrations.pipe(
+  // @effect-diagnostics-next-line strictEffectProvide:off
+  Effect.provide(migrationLayer)
+);
+
+BunRuntime.runMain(migrate);
