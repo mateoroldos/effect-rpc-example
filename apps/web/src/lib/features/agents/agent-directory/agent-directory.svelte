@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { OrganizationId } from "@effect-template/domain/organization";
   import ArrowClockwise from "phosphor-svelte/lib/ArrowClockwise";
   import {
     Alert,
@@ -9,6 +10,8 @@
   import { Skeleton } from "$lib/components/ui/skeleton";
   import { getAgents } from "$lib/remotes/agents.remote";
   import AgentGrid from "./agent-grid.svelte";
+
+  let { organizationId }: { organizationId: OrganizationId } = $props();
 </script>
 
 <section aria-labelledby="agents-heading" class="space-y-4">
@@ -19,7 +22,7 @@
     </div>
     <Button
       aria-label="Refresh Agents"
-      onclick={() => getAgents().refresh()}
+      onclick={() => getAgents({ organizationId }).refresh()}
       size="icon-sm"
       variant="outline"
     >
@@ -47,6 +50,6 @@
       </Alert>
     {/snippet}
 
-    <AgentGrid items={await getAgents()} />
+    <AgentGrid items={await getAgents({ organizationId })} />
   </svelte:boundary>
 </section>
