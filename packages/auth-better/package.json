@@ -4,15 +4,21 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./config": "./src/config.ts"
+    "./better-auth-instance": "./src/better-auth-instance/index.ts",
+    "./better-auth-session": "./src/better-auth-session/index.ts",
+    "./config": "./src/config.ts",
+    "./organization-access": "./src/organization-access-better-auth/index.ts"
   },
   "scripts": {
     "check-types": "tsc"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "1.7.0-rc.5",
+    "@effect-template/core": "workspace:*",
+    "@effect-template/domain": "workspace:*",
     "better-auth": "1.7.0-rc.5",
-    "drizzle-orm": "catalog:"
+    "drizzle-orm": "catalog:",
+    "effect": "catalog:"
   },
   "devDependencies": {
     "@types/bun": "catalog:"
