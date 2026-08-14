@@ -9,8 +9,24 @@ this file in the same change.
 ### Domain
 
 **Agent**:
-A registered AI agent with a stable identity
+A registered AI agent with a stable identity that belongs to one Organization
 _Avoid_: Bot, Entity, Record
+
+**User**:
+A person whose identity is managed by Better Auth
+_Avoid_: Account, Identity
+
+**Principal**:
+The authenticated User identity used to authorize an application operation
+_Avoid_: Session, Actor
+
+**Organization**:
+A tenant that owns Agents and has Members
+_Avoid_: Tenant, Workspace, Team
+
+**Member**:
+A User's membership in one Organization
+_Avoid_: Membership, OrganizationUser
 
 ### Conventions
 

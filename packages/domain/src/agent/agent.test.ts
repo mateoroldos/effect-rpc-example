@@ -2,7 +2,8 @@ import { assert, describe, it } from "@effect/vitest";
 import { Result, Schema } from "effect";
 import { FastCheck } from "effect/testing";
 
-import { AgentId, AgentName } from "./agent.ts";
+import { OrganizationId } from "../organization/organization.ts";
+import { Agent, AgentId, AgentName } from "./agent.ts";
 
 const parseAgentId = Schema.decodeUnknownResult(AgentId);
 const parseAgentName = Schema.decodeUnknownResult(AgentName);
@@ -32,6 +33,28 @@ describe("AgentName", () => {
 
   it.each(["", "   ", "a".repeat(201)])("rejects illegal name %#", (input) => {
     assert.isTrue(Result.isFailure(parseAgentName(input)));
+  });
+});
+
+describe("Agent", () => {
+  it("requires an Organization identity", () => {
+    const result = Schema.decodeUnknownResult(Agent)({
+      id: "123e4567-e89b-42d3-a456-426614174000",
+      name: "Ada",
+    });
+    assert.isTrue(Result.isFailure(result));
+
+    const agent = Agent.make({
+      id: AgentId.make("123e4567-e89b-42d3-a456-426614174000"),
+      name: AgentName.make("Ada"),
+      organizationId: OrganizationId.make(
+        "123e4567-e89b-42d3-a456-426614174001"
+      ),
+    });
+    assert.strictEqual(
+      agent.organizationId,
+      "123e4567-e89b-42d3-a456-426614174001"
+    );
   });
 });
 
