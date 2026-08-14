@@ -100,9 +100,16 @@ apps/web/src/lib/
 
 ## Module shape
 
-One service per file, always this shape (see `agent-directory.ts`):
+One service per module directory, always this shape:
+
+```txt
+agent-directory/
+├── index.ts                 # namespace boundary only
+└── agent-directory.ts       # named declarations and implementation
+```
 
 ```ts
+// agent-directory.ts
 export interface Interface {
   readonly create: (input: CreateInput) => Effect.Effect<Agent, CreateError>
 }
@@ -111,7 +118,7 @@ export class Service extends Context.Service<Service, Interface>()(
   "@effect-template/core/AgentDirectory", // tag string mirrors the module path
 ) {}
 
-export const make = Effect.gen(function* () {
+const make = Effect.gen(function* () {
   const store = yield* AgentStore.Service // yield dependencies once, at build time
   const create = Effect.fn("AgentDirectory.create")(function* (input) {
     /* … */
@@ -121,10 +128,17 @@ export const make = Effect.gen(function* () {
 
 export const layerWithoutDependencies = Layer.effect(Service, make) // requirements open
 export const layer = layerWithoutDependencies.pipe(Layer.provide(AgentStore.layer))
-
-export * as AgentDirectory from "./agent-directory.ts" // module's public identity
 ```
 
+```ts
+// index.ts
+// biome-ignore lint/performance/noBarrelFile: Projects the implementation as the canonical AgentDirectory module namespace.
+export * as AgentDirectory from "./agent-directory.ts"
+```
+
+Implementation files export named declarations and never export a namespace of
+themselves. Package subpaths point to `index.ts`. Relative imports of a module
+boundary include `/index.ts`; package consumers use the exported subpath.
 `layerWithoutDependencies` leaves requirements unfilled for composition; `layer`
 is production-ready. Yield stable deps while building; yield request-scoped
 values inside the method that uses them.
@@ -352,7 +366,8 @@ Use property tests for parsers and branded types.
 - Export only what a caller consumes. An in-file-only helper (like a service's
   `make`) stays a non-exported `const` — `knip` cannot flag these because they
   live in entry files, so it is a review rule. Do not widen `exports` for tests.
-- Keep each package service module's `export * as` barrel and its `biome-ignore`
-  comment. Web remote adapters call the shared `AppRpcClient` directly; do not
-  add pass-through feature clients.
+- Keep each service namespace in its module directory's `index.ts`, with the
+  intentional `noBarrelFile` explanation. `rules/namespace-export-in-index.grit`
+  rejects namespace exports from implementation files. Web remote adapters call
+  the shared `AppRpcClient` directly; do not add pass-through feature clients.
 - Do not hand-edit generated migrations under `packages/database/drizzle`.

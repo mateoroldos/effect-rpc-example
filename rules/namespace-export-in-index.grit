@@ -1,0 +1,5 @@
+// Namespace projections are module boundaries, not implementation details.
+// This plugin runs only outside index.ts files (see biome.jsonc).
+`export * as $name from $source` where {
+  register_diagnostic(span=$name, message="Namespace exports belong in the module's index.ts boundary. Export named declarations from implementation files.")
+}

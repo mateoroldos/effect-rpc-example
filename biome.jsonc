@@ -23,10 +23,17 @@
         // false positives here. Cross-package resolution is dependency-cruiser's
         // job (bun run check-arch).
         "noUnresolvedImports": "off"
+      },
+      "performance": {
+        "noNamespaceImport": "error"
       }
     }
   },
   "overrides": [
+    {
+      "includes": ["**/*.ts", "!**/index.ts"],
+      "plugins": ["./rules/namespace-export-in-index.grit"]
+    },
     {
       "includes": ["**/*.test.ts"],
       "plugins": ["./rules/no-sleep-in-tests.grit"],
