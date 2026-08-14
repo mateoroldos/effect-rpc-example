@@ -15,8 +15,10 @@ bun run env:setup      # seed each app's .env (create-if-missing)
 bun run db:setup       # start shared Postgres, create + migrate this workspace's db
 bun run dev            # API and Web through Portless
 bun run check-types    # tsc + Effect compiler diagnostics
-bun run test           # vitest
-bun run check          # format + lint (biome)
+bun run test                   # unit tests (vitest)
+bun run test:integration       # PostgreSQL integration tests; server must be available
+bun run test:integration:local # start/reuse local PostgreSQL, then run integration tests
+bun run check                  # format + lint (biome)
 bun run check-arch     # dependency-cruiser: the arrows below, enforced
 bun run knip           # dead files / exports / dependencies
 ```

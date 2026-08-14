@@ -31,7 +31,8 @@
     "prepare": "./scripts/prepare-effect.sh && effect-tsgo patch",
     "telemetry:up": "./scripts/start-maple.sh",
     "test": "vitest run",
-    "test:integration": "bun run db:up && vitest run --config vitest.integration.config.ts"
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:integration:local": "bun run db:up && bun run test:integration"
   },
   "overrides": {
     "@effect/platform-node-shared": "4.0.0-beta.102",

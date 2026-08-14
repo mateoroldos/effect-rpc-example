@@ -255,10 +255,11 @@ the real interface, and no modules are mocked.
 | Contract | in-memory RPC client | RPC contract and error projection |
 | End-to-end | test HTTP server + real client | full transport round-trip |
 
-`bun run test:integration` uses the shared local PostgreSQL server but never a
-workspace's development database. Each test acquires, migrates, and drops a
-uniquely named database. Set `TEST_DATABASE_URL` only when integration tests need
-a different PostgreSQL server; it must name a maintenance database on that server.
+`bun run test:integration:local` starts or reuses the shared local PostgreSQL
+server, then runs `bun run test:integration`. Each test acquires, migrates, and
+drops a uniquely named database; it never uses a workspace's development
+database. `TEST_DATABASE_URL` must name a maintenance database whose user can
+create and drop databases. CI supplies it through a PostgreSQL service container.
 
 ## Scaling
 
@@ -316,7 +317,8 @@ root supply the implementation — so cross-feature coupling never becomes a web
 | `bun run db:nuke` | Remove the shared container, network, and data volume. |
 | `bun run check-types` | Type-check every package (with Effect compiler diagnostics) plus the Alchemy stack. |
 | `bun run test` | Run the unit test suite. |
-| `bun run test:integration` | Run isolated PostgreSQL integration tests. |
+| `bun run test:integration` | Run isolated PostgreSQL integration tests against `TEST_DATABASE_URL`. |
+| `bun run test:integration:local` | Start or reuse local PostgreSQL, then run integration tests. |
 | `bun run check` | Format and lint. |
 | `bun run check-arch` | Enforce the dependency arrows (dependency-cruiser). |
 | `bun run knip` | Report unused files, exports, and dependencies. |
