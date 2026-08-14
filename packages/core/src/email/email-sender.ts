@@ -57,6 +57,3 @@ export const layerLog = Layer.succeed(
     }),
   })
 );
-
-// biome-ignore lint/performance/noBarrelFile: Defines the canonical ES module namespace for this leaf module.
-export * as EmailSender from "./email-sender.ts";

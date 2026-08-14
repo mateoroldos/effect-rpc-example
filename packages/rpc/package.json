@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./agents": "./src/agents/agents-rpc.ts",
-    "./rpc": "./src/rpc.ts"
+    "./agents": "./src/agents/index.ts",
+    "./rpc": "./src/rpc/index.ts"
   },
   "scripts": {
     "check-types": "tsc"

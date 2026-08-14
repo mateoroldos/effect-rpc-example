@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./cloudflare": "./src/cloudflare.ts"
+    "./cloudflare": "./src/cloudflare-email-sender/index.ts"
   },
   "scripts": {
     "check-types": "tsc"

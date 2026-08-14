@@ -1,6 +1,6 @@
 import { Agent, AgentId, type AgentName } from "@effect-template/domain/agent";
 import { Context, Crypto, Effect, Layer, Option, Schema } from "effect";
-import { AgentStore } from "./agent-store.ts";
+import { AgentStore } from "./agent-store/index.ts";
 
 /** Application operations for maintaining the directory of known Agents. */
 export interface Interface {
@@ -65,6 +65,3 @@ export class IdGenerationError extends Schema.TaggedErrorClass<IdGenerationError
   "AgentDirectory.IdGenerationError",
   { cause: Schema.Defect() }
 ) {}
-
-// biome-ignore lint/performance/noBarrelFile: Defines the canonical ES module namespace for this leaf module.
-export * as AgentDirectory from "./agent-directory.ts";

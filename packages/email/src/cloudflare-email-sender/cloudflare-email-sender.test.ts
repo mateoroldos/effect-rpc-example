@@ -2,7 +2,10 @@ import { assert, describe, it } from "@effect/vitest";
 import { EmailSender } from "@effect-template/core/email";
 import { Redacted, Schema } from "effect";
 
-import { buildPayload, type CloudflareEmailConfig } from "./cloudflare.ts";
+import {
+  buildPayload,
+  type CloudflareEmailConfig,
+} from "./cloudflare-email-sender.ts";
 
 const config: CloudflareEmailConfig = {
   accountId: "acc_123",
