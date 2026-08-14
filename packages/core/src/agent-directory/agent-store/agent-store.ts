@@ -1,16 +1,20 @@
 import type { Agent, AgentId } from "@effect-template/domain/agent";
+import type { OrganizationId } from "@effect-template/domain/organization";
 import { Context, Effect, Layer, Option, Ref, Schema } from "effect";
 
 /** Persistence authority required by the Agent Directory. */
 export interface Interface {
   /** Persists a new Agent, failing when its identity already exists. */
   readonly create: (agent: Agent) => Effect.Effect<void, PersistenceError>;
-  /** Finds a persisted Agent by identity. */
+  /** Finds an Agent only within the requested Organization. */
   readonly find: (
+    organizationId: OrganizationId,
     id: AgentId
   ) => Effect.Effect<Option.Option<Agent>, PersistenceError>;
-  /** Retrieves all persisted Agents without guaranteeing order. */
-  readonly list: Effect.Effect<readonly Agent[], PersistenceError>;
+  /** Retrieves Agents belonging to the requested Organization without guaranteeing order. */
+  readonly list: (
+    organizationId: OrganizationId
+  ) => Effect.Effect<readonly Agent[], PersistenceError>;
 }
 
 /** Context service for Agent persistence. */
@@ -48,15 +52,24 @@ export const layerMemory = Layer.effect(
       }
     });
 
-    const find = Effect.fn("AgentStoreMemory.find")(function* (id: AgentId) {
+    const find = Effect.fn("AgentStoreMemory.find")(function* (
+      organizationId: OrganizationId,
+      id: AgentId
+    ) {
       const agent = (yield* Ref.get(state)).get(id);
-      return agent === undefined ? Option.none() : Option.some(agent);
+      return agent?.organizationId === organizationId
+        ? Option.some(agent)
+        : Option.none();
     });
 
-    const list = Ref.get(state).pipe(
-      Effect.map((agents) => Array.from(agents.values())),
-      Effect.withSpan("AgentStoreMemory.list")
-    );
+    const list = Effect.fn("AgentStoreMemory.list")(function* (
+      organizationId: OrganizationId
+    ) {
+      const agents = yield* Ref.get(state);
+      return Array.from(agents.values()).filter(
+        (agent) => agent.organizationId === organizationId
+      );
+    });
 
     return Service.of({ create, find, list });
   })

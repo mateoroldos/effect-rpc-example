@@ -6,7 +6,8 @@
   "exports": {
     "./agent-directory": "./src/agent-directory/index.ts",
     "./agent-directory/store": "./src/agent-directory/agent-store/index.ts",
-    "./email": "./src/email/index.ts"
+    "./email": "./src/email/index.ts",
+    "./organization-access": "./src/organization-access/index.ts"
   },
   "scripts": {
     "check-types": "tsc"

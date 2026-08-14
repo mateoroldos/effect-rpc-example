@@ -1,9 +1,21 @@
 import { assert, describe, it } from "@effect/vitest";
 import { AgentId, AgentName } from "@effect-template/domain/agent";
+import { Principal, UserId } from "@effect-template/domain/identity";
+import { OrganizationId } from "@effect-template/domain/organization";
 import { Crypto, Effect, Layer, PlatformError } from "effect";
+import { OrganizationAccess } from "../organization-access/index.ts";
 import { AgentStore } from "./agent-store/index.ts";
 import { AgentDirectory } from "./index.ts";
 
+const principal = Principal.make({
+  userId: UserId.make("123e4567-e89b-42d3-a456-426614174000"),
+});
+const organizationId = OrganizationId.make(
+  "123e4567-e89b-42d3-a456-426614174001"
+);
+const otherOrganizationId = OrganizationId.make(
+  "123e4567-e89b-42d3-a456-426614174002"
+);
 const cryptoLayer = Layer.succeed(
   Crypto.Crypto,
   Crypto.make({
@@ -12,6 +24,23 @@ const cryptoLayer = Layer.succeed(
   })
 );
 const applicationLayer = AgentDirectory.layerWithoutDependencies.pipe(
+  Layer.provide(OrganizationAccess.layerAllowAll),
+  Layer.provide(AgentStore.layerMemory),
+  Layer.provide(cryptoLayer)
+);
+const deniedAccessLayer = Layer.succeed(
+  OrganizationAccess.Service,
+  OrganizationAccess.Service.of({
+    requireMember: (_principal, requestedOrganizationId) =>
+      Effect.fail(
+        new OrganizationAccess.NotMember({
+          organizationId: requestedOrganizationId,
+        })
+      ),
+  })
+);
+const deniedApplicationLayer = AgentDirectory.layerWithoutDependencies.pipe(
+  Layer.provide(deniedAccessLayer),
   Layer.provide(AgentStore.layerMemory),
   Layer.provide(cryptoLayer)
 );
@@ -29,19 +58,87 @@ const failingCryptoLayer = Layer.succeed(Crypto.Crypto, {
   ),
 });
 const unavailableIdentityLayer = AgentDirectory.layerWithoutDependencies.pipe(
+  Layer.provide(OrganizationAccess.layerAllowAll),
   Layer.provide(AgentStore.layerMemory),
   Layer.provide(failingCryptoLayer)
 );
 
 describe("AgentDirectory", () => {
-  it.layer(applicationLayer)("create and get", (test) => {
-    test.effect("makes a created Agent retrievable", () =>
+  it.layer(applicationLayer)("Organization member", (test) => {
+    test.effect("creates and retrieves an Agent in the same Organization", () =>
       Effect.gen(function* () {
         const directory = yield* AgentDirectory.Service;
-        const created = yield* directory.create({
+        const created = yield* directory.create(principal, organizationId, {
           name: AgentName.make("Ada"),
         });
-        assert.deepEqual(yield* directory.get(created.id), created);
+        assert.deepEqual(
+          yield* directory.get(principal, organizationId, created.id),
+          created
+        );
+      })
+    );
+  });
+
+  it.layer(applicationLayer)("Organization isolation", (test) => {
+    test.effect("never returns another Organization's Agents", () =>
+      Effect.gen(function* () {
+        const directory = yield* AgentDirectory.Service;
+        const created = yield* directory.create(principal, organizationId, {
+          name: AgentName.make("Ada"),
+        });
+        assert.deepEqual(
+          yield* directory.list(principal, otherOrganizationId),
+          []
+        );
+        const error = yield* directory
+          .get(principal, otherOrganizationId, created.id)
+          .pipe(Effect.flip);
+        assert.strictEqual(error._tag, "AgentDirectory.NotFound");
+      })
+    );
+  });
+
+  it.layer(deniedApplicationLayer)("non-Member", (test) => {
+    test.effect("rejects access before creating an Agent", () =>
+      Effect.gen(function* () {
+        const directory = yield* AgentDirectory.Service;
+        const error = yield* directory
+          .create(principal, organizationId, { name: AgentName.make("Ada") })
+          .pipe(Effect.flip);
+        assert.deepInclude(error, {
+          _tag: "OrganizationAccess.NotMember",
+          organizationId,
+        });
+      })
+    );
+
+    test.effect("rejects access before retrieving an Agent", () =>
+      Effect.gen(function* () {
+        const directory = yield* AgentDirectory.Service;
+        const error = yield* directory
+          .get(
+            principal,
+            organizationId,
+            AgentId.make("123e4567-e89b-42d3-a456-426614174003")
+          )
+          .pipe(Effect.flip);
+        assert.deepInclude(error, {
+          _tag: "OrganizationAccess.NotMember",
+          organizationId,
+        });
+      })
+    );
+
+    test.effect("rejects access before listing Agents", () =>
+      Effect.gen(function* () {
+        const directory = yield* AgentDirectory.Service;
+        const error = yield* directory
+          .list(principal, organizationId)
+          .pipe(Effect.flip);
+        assert.deepInclude(error, {
+          _tag: "OrganizationAccess.NotMember",
+          organizationId,
+        });
       })
     );
   });
@@ -51,7 +148,7 @@ describe("AgentDirectory", () => {
       Effect.gen(function* () {
         const directory = yield* AgentDirectory.Service;
         const error = yield* directory
-          .create({ name: AgentName.make("Ada") })
+          .create(principal, organizationId, { name: AgentName.make("Ada") })
           .pipe(Effect.flip);
         assert.strictEqual(error._tag, "AgentDirectory.IdGenerationError");
       })
@@ -62,25 +159,14 @@ describe("AgentDirectory", () => {
     test.effect("returns AgentDirectory.NotFound", () =>
       Effect.gen(function* () {
         const directory = yield* AgentDirectory.Service;
-        const unknownId = AgentId.make("123e4567-e89b-42d3-a456-426614174000");
-
-        const error = yield* directory.get(unknownId).pipe(Effect.flip);
+        const unknownId = AgentId.make("123e4567-e89b-42d3-a456-426614174003");
+        const error = yield* directory
+          .get(principal, organizationId, unknownId)
+          .pipe(Effect.flip);
         assert.deepInclude(error, {
           _tag: "AgentDirectory.NotFound",
           id: unknownId,
         });
-      })
-    );
-  });
-
-  it.layer(applicationLayer)("listing", (test) => {
-    test.effect("lists created Agents without relying on order", () =>
-      Effect.gen(function* () {
-        const directory = yield* AgentDirectory.Service;
-        const created = yield* directory.create({
-          name: AgentName.make("Ada"),
-        });
-        assert.deepInclude(yield* directory.list, created);
       })
     );
   });
