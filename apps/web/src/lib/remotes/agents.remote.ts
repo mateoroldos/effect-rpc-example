@@ -20,12 +20,10 @@ export const getAgents = query(
         Match.value(failure).pipe(
           Match.tagsExhaustive({
             "AgentsRpc.Forbidden": () => error(404, "Organization not found"),
+            "AgentsRpc.Unauthenticated": () =>
+              error(401, "Sign in to continue."),
             "AgentsRpc.Unavailable": () =>
               error(503, "Agents could not be loaded. Try again later."),
-            "AuthenticationRpc.Unauthenticated": () =>
-              error(401, "Sign in to continue."),
-            "AuthenticationRpc.Unavailable": () =>
-              error(503, "We couldn't complete your request. Try again later."),
           })
         )
     );
@@ -42,12 +40,10 @@ export const createAgent = form(
         Match.value(failure).pipe(
           Match.tagsExhaustive({
             "AgentsRpc.Forbidden": () => error(404, "Organization not found"),
+            "AgentsRpc.Unauthenticated": () =>
+              error(401, "Sign in to continue."),
             "AgentsRpc.Unavailable": () =>
               error(503, "The Agent could not be created. Try again later."),
-            "AuthenticationRpc.Unauthenticated": () =>
-              error(401, "Sign in to continue."),
-            "AuthenticationRpc.Unavailable": () =>
-              error(503, "We couldn't complete your request. Try again later."),
           })
         )
     );

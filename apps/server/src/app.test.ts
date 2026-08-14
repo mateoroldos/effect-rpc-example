@@ -2,30 +2,19 @@ import { NodeHttpServer } from "@effect/platform-node";
 import { assert, describe, it } from "@effect/vitest";
 import { AgentDirectory } from "@effect-template/core/agent-directory";
 import { AgentStore } from "@effect-template/core/agent-directory/store";
-import { OrganizationAccess } from "@effect-template/core/organization-access";
 import { AgentName } from "@effect-template/domain/agent";
-import { Principal, UserId } from "@effect-template/domain/identity";
 import { OrganizationId } from "@effect-template/domain/organization";
 import { AgentsRpc } from "@effect-template/rpc/agents";
-import { AuthenticationRpc } from "@effect-template/rpc/authentication";
 import { Crypto, Effect, Layer } from "effect";
 import { HttpClient, HttpClientRequest } from "effect/unstable/http";
 import { RpcClient, RpcSerialization } from "effect/unstable/rpc";
 
+import { AuthorizationRpc } from "./auth/authorization-rpc/index.ts";
 import { agentsHandlersLayer } from "./rpc/agents.ts";
 import { rpcServerLayer } from "./rpc/server.ts";
 
-const principal = Principal.make({
-  userId: UserId.make("123e4567-e89b-42d3-a456-426614174000"),
-});
 const organizationId = OrganizationId.make(
   "123e4567-e89b-42d3-a456-426614174001"
-);
-const authenticationLayer = Layer.succeed(
-  AuthenticationRpc.AuthenticationMiddleware,
-  AuthenticationRpc.AuthenticationMiddleware.of((effect) =>
-    Effect.provideService(effect, AuthenticationRpc.CurrentPrincipal, principal)
-  )
 );
 const cryptoLayer = Layer.succeed(
   Crypto.Crypto,
@@ -36,13 +25,12 @@ const cryptoLayer = Layer.succeed(
 );
 const agentsRpcHandlersTestLayer = agentsHandlersLayer.pipe(
   Layer.provide(AgentDirectory.layerWithoutDependencies),
-  Layer.provide(OrganizationAccess.layerAllowAll),
   Layer.provide(AgentStore.layerMemory),
   Layer.provide(cryptoLayer)
 );
 const serverLayer = rpcServerLayer.pipe(
   Layer.provide(agentsRpcHandlersTestLayer),
-  Layer.provide(authenticationLayer)
+  Layer.provide(AuthorizationRpc.layerAllowAll)
 );
 const clientProtocolLayer = RpcClient.layerProtocolHttp({
   transformClient: HttpClient.mapRequest(HttpClientRequest.appendUrl("/rpc")),

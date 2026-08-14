@@ -28,6 +28,19 @@ _Avoid_: Tenant, Workspace, Team
 A User's membership in one Organization
 _Avoid_: Membership, OrganizationUser
 
+**Organization Role**:
+A named set of Organization Permissions assigned to a Member
+_Avoid_: Group, AccessLevel
+
+**Organization Permission**:
+A named application action controlled by an Organization Role
+_Avoid_: Scope, Privilege, Capability
+
+**Authorization**:
+The request-scoped capability that requires the current caller to hold an
+Organization Permission
+_Avoid_: Authorizer, OrganizationAccess, AccessManager, PermissionChecker
+
 ### Conventions
 
 Recurring role names. A new capability reuses them. `check` enforces the

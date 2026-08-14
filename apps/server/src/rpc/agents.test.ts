@@ -1,29 +1,16 @@
 import { assert, describe, it } from "@effect/vitest";
-import { BetterAuthSession } from "@effect-template/auth-better/better-auth-session";
 import { AgentDirectory } from "@effect-template/core/agent-directory";
 import { AgentStore } from "@effect-template/core/agent-directory/store";
-import { OrganizationAccess } from "@effect-template/core/organization-access";
 import { AgentId, AgentName } from "@effect-template/domain/agent";
-import { Principal, UserId } from "@effect-template/domain/identity";
 import { OrganizationId } from "@effect-template/domain/organization";
 import { AgentsRpc } from "@effect-template/rpc/agents";
-import { AuthenticationRpc } from "@effect-template/rpc/authentication";
-import { Crypto, Effect, Layer, Option } from "effect";
+import { Crypto, Effect, Layer } from "effect";
 import { RpcTest } from "effect/unstable/rpc";
-import { authenticationMiddlewareLayer } from "../auth/rpc-middleware.ts";
-import { agentsHandlersLayer } from "./agents.ts";
+import { AuthorizationRpc } from "../auth/authorization-rpc/index.ts";
+import { group as agentsGroup, agentsHandlersLayer } from "./agents.ts";
 
-const principal = Principal.make({
-  userId: UserId.make("123e4567-e89b-42d3-a456-426614174000"),
-});
 const organizationId = OrganizationId.make(
   "123e4567-e89b-42d3-a456-426614174001"
-);
-const authenticationLayer = Layer.succeed(
-  AuthenticationRpc.AuthenticationMiddleware,
-  AuthenticationRpc.AuthenticationMiddleware.of((effect) =>
-    Effect.provideService(effect, AuthenticationRpc.CurrentPrincipal, principal)
-  )
 );
 const cryptoLayer = Layer.succeed(
   Crypto.Crypto,
@@ -33,13 +20,12 @@ const cryptoLayer = Layer.succeed(
   })
 );
 const availableDirectoryLayer = AgentDirectory.layerWithoutDependencies.pipe(
-  Layer.provide(OrganizationAccess.layerAllowAll),
   Layer.provide(AgentStore.layerMemory),
   Layer.provide(cryptoLayer)
 );
 const availableLayer = agentsHandlersLayer.pipe(
   Layer.provide(availableDirectoryLayer),
-  Layer.merge(authenticationLayer)
+  Layer.merge(AuthorizationRpc.layerAllowAll)
 );
 const persistenceFailure = () =>
   new AgentStore.PersistenceError({
@@ -51,7 +37,6 @@ const unavailableStore: AgentStore.Interface = {
   list: () => Effect.fail(persistenceFailure()),
 };
 const unavailableDirectoryLayer = AgentDirectory.layerWithoutDependencies.pipe(
-  Layer.provide(OrganizationAccess.layerAllowAll),
   Layer.provide(
     Layer.succeed(AgentStore.Service, AgentStore.Service.of(unavailableStore))
   ),
@@ -59,22 +44,11 @@ const unavailableDirectoryLayer = AgentDirectory.layerWithoutDependencies.pipe(
 );
 const unavailableLayer = agentsHandlersLayer.pipe(
   Layer.provide(unavailableDirectoryLayer),
-  Layer.merge(authenticationLayer)
+  Layer.merge(AuthorizationRpc.layerAllowAll)
 );
 const unauthenticatedLayer = agentsHandlersLayer.pipe(
   Layer.provide(availableDirectoryLayer),
-  Layer.merge(
-    authenticationMiddlewareLayer.pipe(
-      Layer.provide(
-        Layer.succeed(
-          BetterAuthSession.Service,
-          BetterAuthSession.Service.of({
-            resolvePrincipal: () => Effect.succeed(Option.none()),
-          })
-        )
-      )
-    )
-  )
+  Layer.merge(AuthorizationRpc.layerUnauthenticated)
 );
 
 const unknownId = AgentId.make("123e4567-e89b-42d3-a456-426614174002");
@@ -84,7 +58,7 @@ describe("agents RPC", () => {
     test.effect("round-trips create, get, and list", () =>
       Effect.scoped(
         Effect.gen(function* () {
-          const client = yield* RpcTest.makeClient(AgentsRpc.group);
+          const client = yield* RpcTest.makeClient(agentsGroup);
           const created = yield* client["Agents.Create"]({
             name: AgentName.make("Ada"),
             organizationId,
@@ -104,7 +78,7 @@ describe("agents RPC", () => {
     test.effect("projects a missing Agent to AgentsRpc.NotFound", () =>
       Effect.scoped(
         Effect.gen(function* () {
-          const client = yield* RpcTest.makeClient(AgentsRpc.group);
+          const client = yield* RpcTest.makeClient(agentsGroup);
           const error = yield* client["Agents.Get"]({
             id: unknownId,
             organizationId,
@@ -119,14 +93,14 @@ describe("agents RPC", () => {
   });
 
   it.layer(unauthenticatedLayer)("missing session", (test) => {
-    test.effect("rejects before the Agent handler", () =>
+    test.effect("rejects within the Agent operation", () =>
       Effect.scoped(
         Effect.gen(function* () {
-          const client = yield* RpcTest.makeClient(AgentsRpc.group);
+          const client = yield* RpcTest.makeClient(agentsGroup);
           const error = yield* client["Agents.List"]({ organizationId }).pipe(
             Effect.flip
           );
-          assert.deepEqual(error, new AuthenticationRpc.Unauthenticated());
+          assert.deepEqual(error, new AgentsRpc.Unauthenticated());
         })
       )
     );
@@ -136,7 +110,7 @@ describe("agents RPC", () => {
     test.effect("projects persistence failures to Unavailable", () =>
       Effect.scoped(
         Effect.gen(function* () {
-          const client = yield* RpcTest.makeClient(AgentsRpc.group);
+          const client = yield* RpcTest.makeClient(agentsGroup);
           const createError = yield* client["Agents.Create"]({
             name: AgentName.make("Ada"),
             organizationId,

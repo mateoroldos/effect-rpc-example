@@ -1,12 +1,11 @@
+import { AuthorizationBetterAuth } from "@effect-template/auth-better/authorization";
 import { BetterAuthInstance } from "@effect-template/auth-better/better-auth-instance";
-import { BetterAuthSession } from "@effect-template/auth-better/better-auth-session";
-import { OrganizationAccessBetterAuth } from "@effect-template/auth-better/organization-access";
 // biome-ignore lint/performance/noNamespaceImport: Better Auth requires the complete generated schema module.
 import * as authSchema from "@effect-template/database/auth-schema";
 import { Config, Effect, Layer, Redacted } from "effect";
 
 import { betterAuthDatabase } from "../infra/database.ts";
-import { authenticationMiddlewareLayer } from "./rpc-middleware.ts";
+import { AuthorizationRpc } from "./authorization-rpc/index.ts";
 
 const betterAuthInstanceLayer = Layer.unwrap(
   Effect.gen(function* makeBetterAuthInstanceLayer() {
@@ -26,21 +25,12 @@ const betterAuthInstanceLayer = Layer.unwrap(
   })
 );
 
-const betterAuthSessionLayer = BetterAuthSession.layerWithoutDependencies.pipe(
-  Layer.provide(betterAuthInstanceLayer)
-);
-
-const organizationAccessLayer =
-  OrganizationAccessBetterAuth.layerWithoutDependencies.pipe(
+const betterAuthAuthorizationLayer =
+  AuthorizationBetterAuth.layerWithoutDependencies.pipe(
     Layer.provide(betterAuthInstanceLayer)
   );
 
-const authenticationLayer = authenticationMiddlewareLayer.pipe(
-  Layer.provide(betterAuthSessionLayer)
-);
-
-/** Authentication and Organization access capabilities for the API server. */
-export const authLayer = Layer.merge(
-  authenticationLayer,
-  organizationAccessLayer
+/** Better Auth-backed Organization authorization for server RPC handlers. */
+export const authLayer = AuthorizationRpc.layer.pipe(
+  Layer.provide(betterAuthAuthorizationLayer)
 );

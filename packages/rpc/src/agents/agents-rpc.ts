@@ -3,7 +3,11 @@ import { OrganizationId } from "@effect-template/domain/organization";
 import { Schema } from "effect";
 import { Rpc, RpcGroup } from "effect/unstable/rpc";
 
-import { AuthenticationMiddleware } from "../authentication/authentication-rpc.ts";
+/** Indicates that an Agent RPC operation has no authenticated session. */
+export class Unauthenticated extends Schema.TaggedErrorClass<Unauthenticated>()(
+  "AgentsRpc.Unauthenticated",
+  {}
+) {}
 
 /** Indicates that an Agent RPC operation could not reach an application dependency. */
 export class Unavailable extends Schema.TaggedErrorClass<Unavailable>()(
@@ -46,18 +50,18 @@ export type ListAgentsInput = typeof ListAgentsInput.Type;
 /** Defines authenticated, Organization-scoped Agent operations. */
 export const group = RpcGroup.make(
   Rpc.make("Agents.Create", {
-    error: Schema.Union([Forbidden, Unavailable]),
+    error: Schema.Union([Forbidden, Unavailable, Unauthenticated]),
     payload: CreateAgentInput,
     success: Agent,
   }),
   Rpc.make("Agents.Get", {
-    error: Schema.Union([Forbidden, NotFound, Unavailable]),
+    error: Schema.Union([Forbidden, NotFound, Unavailable, Unauthenticated]),
     payload: GetAgentInput,
     success: Agent,
   }),
   Rpc.make("Agents.List", {
-    error: Schema.Union([Forbidden, Unavailable]),
+    error: Schema.Union([Forbidden, Unavailable, Unauthenticated]),
     payload: ListAgentsInput,
     success: Schema.Array(Agent),
   })
-).middleware(AuthenticationMiddleware);
+);
