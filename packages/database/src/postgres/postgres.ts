@@ -5,7 +5,7 @@ import { migrate } from "drizzle-orm/effect-postgres/migrator";
 import { Config, Context, Effect, Layer, type Redacted, Schema } from "effect";
 import { type CustomTypesConfig, types } from "pg";
 
-import { migrationConfig } from "./migrations.ts";
+import { migrationConfig } from "../migrations.ts";
 
 /** Context service for an acquired, migrated PostgreSQL database. */
 export class Service extends Context.Service<Service, EffectPgDatabase>()(
@@ -60,6 +60,3 @@ export class MigrationError extends Schema.TaggedErrorClass<MigrationError>()(
   "DatabasePostgres.MigrationError",
   { cause: Schema.Defect() }
 ) {}
-
-// biome-ignore lint/performance/noBarrelFile: Defines the canonical ES module namespace for this leaf module.
-export * as DatabasePostgres from "./postgres.ts";

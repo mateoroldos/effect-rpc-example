@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./postgres": "./src/postgres.ts",
-    "./agents/postgres": "./src/agents/agent-store-postgres.ts"
+    "./postgres": "./src/postgres/index.ts",
+    "./agents/postgres": "./src/agents/agent-store-postgres/index.ts"
   },
   "scripts": {
     "check-types": "tsc",

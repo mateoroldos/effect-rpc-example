@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest";
 import { Effect, Result, Schema } from "effect";
 
-import { EmailSender } from "./email-sender.ts";
+import { EmailSender } from "./index.ts";
 
 const parseEmail = Schema.decodeUnknownResult(EmailSender.EmailAddress);
 const parseMessage = Schema.decodeUnknownSync(EmailSender.EmailMessage);

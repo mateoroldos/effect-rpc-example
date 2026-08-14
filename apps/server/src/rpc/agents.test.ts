@@ -1,9 +1,6 @@
 import { assert, describe, it } from "@effect/vitest";
 import { AgentDirectory } from "@effect-template/core/agent-directory";
-import {
-  AgentStore,
-  layerMemory,
-} from "@effect-template/core/agent-directory/store";
+import { AgentStore } from "@effect-template/core/agent-directory/store";
 import { AgentId, AgentName } from "@effect-template/domain/agent";
 import { AgentsRpc } from "@effect-template/rpc/agents";
 import { Crypto, Effect, Layer } from "effect";
@@ -18,7 +15,7 @@ const cryptoLayer = Layer.succeed(
   })
 );
 const availableDirectoryLayer = AgentDirectory.layerWithoutDependencies.pipe(
-  Layer.provide(layerMemory),
+  Layer.provide(AgentStore.layerMemory),
   Layer.provide(cryptoLayer)
 );
 const availableLayer = agentsHandlersLayer.pipe(

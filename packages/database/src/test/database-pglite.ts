@@ -4,7 +4,7 @@ import { migrate } from "drizzle-orm/effect-pglite/migrator";
 import { Effect, Layer } from "effect";
 
 import { migrationConfig } from "../migrations.ts";
-import { DatabasePostgres } from "../postgres.ts";
+import { DatabasePostgres } from "../postgres/index.ts";
 
 const clientLayer = PgliteClient.layer();
 

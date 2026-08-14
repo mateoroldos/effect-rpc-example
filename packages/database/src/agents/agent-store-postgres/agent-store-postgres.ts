@@ -4,8 +4,8 @@ import { eq } from "drizzle-orm";
 import type { EffectPgDatabase } from "drizzle-orm/effect-postgres";
 import { Effect, Layer, Option, Schema } from "effect";
 
-import { DatabasePostgres } from "../postgres.ts";
-import { agents } from "./schema.ts";
+import { DatabasePostgres } from "../../postgres/index.ts";
+import { agents } from "../schema.ts";
 
 const decodeAgents = Schema.decodeUnknownEffect(Schema.Array(Agent));
 
@@ -65,6 +65,3 @@ export const layer = Layer.effect(
   AgentStore.Service,
   Effect.map(DatabasePostgres.Service, make)
 );
-
-// biome-ignore lint/performance/noBarrelFile: Defines the canonical ES module namespace for this leaf module.
-export * as AgentStorePostgres from "./agent-store-postgres.ts";

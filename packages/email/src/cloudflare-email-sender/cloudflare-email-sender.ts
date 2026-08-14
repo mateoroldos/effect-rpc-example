@@ -81,6 +81,3 @@ export const layer = Layer.effect(
     return EmailSender.Service.of(make(config, client));
   })
 );
-
-// biome-ignore lint/performance/noBarrelFile: Defines the canonical ES module namespace for this leaf module.
-export * as CloudflareEmailSender from "./cloudflare.ts";

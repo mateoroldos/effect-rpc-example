@@ -259,13 +259,31 @@ The layout scales by adding **module directories**, not a package per feature.
 A pure type graduates to `packages/domain` when more than one layer reasons about
 it (web renders it, rpc serializes it, services persist it); a value used by a
 single port stays beside that port in `core`. Application services grow as
-sibling module directories in `core`:
+sibling module directories in `core`. Every service namespace has one boundary
+file and one implementation file:
 
 ```txt
-domain/src/agent/            shared vocabulary — many consumers (web, rpc, core, db)
-core/src/agent-directory/    an application service + its port (AgentStore)
-core/src/email/email-sender  a port + its port-local value types (single consumer)
+domain/src/agent/                         shared vocabulary — many consumers
+core/src/agent-directory/
+├── index.ts                              AgentDirectory namespace boundary
+├── agent-directory.ts                    service implementation
+└── agent-store/
+    ├── index.ts                          AgentStore namespace boundary
+    └── agent-store.ts                    port implementation
+core/src/email/
+├── index.ts                              EmailSender namespace boundary
+└── email-sender.ts                       port + port-local value types
 ```
+
+An `index.ts` only projects its implementation as a namespace:
+
+```ts
+export * as AgentDirectory from "./agent-directory.ts"
+```
+
+Implementation files export named declarations and never export a namespace of
+themselves. Package exports point to `index.ts`; relative boundary imports use an
+explicit `/index.ts`, while package consumers use the clean exported subpath.
 
 Split a **new package** only when there is a real boundary:
 

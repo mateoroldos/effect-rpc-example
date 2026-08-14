@@ -1,8 +1,8 @@
 import { assert, describe, it } from "@effect/vitest";
 import { AgentId, AgentName } from "@effect-template/domain/agent";
 import { Crypto, Effect, Layer, PlatformError } from "effect";
-import { AgentDirectory } from "./agent-directory.ts";
-import { layerMemory } from "./agent-store.ts";
+import { AgentStore } from "./agent-store/index.ts";
+import { AgentDirectory } from "./index.ts";
 
 const cryptoLayer = Layer.succeed(
   Crypto.Crypto,
@@ -12,7 +12,7 @@ const cryptoLayer = Layer.succeed(
   })
 );
 const applicationLayer = AgentDirectory.layerWithoutDependencies.pipe(
-  Layer.provide(layerMemory),
+  Layer.provide(AgentStore.layerMemory),
   Layer.provide(cryptoLayer)
 );
 const failingCryptoLayer = Layer.succeed(Crypto.Crypto, {
@@ -29,7 +29,7 @@ const failingCryptoLayer = Layer.succeed(Crypto.Crypto, {
   ),
 });
 const unavailableIdentityLayer = AgentDirectory.layerWithoutDependencies.pipe(
-  Layer.provide(layerMemory),
+  Layer.provide(AgentStore.layerMemory),
   Layer.provide(failingCryptoLayer)
 );
 

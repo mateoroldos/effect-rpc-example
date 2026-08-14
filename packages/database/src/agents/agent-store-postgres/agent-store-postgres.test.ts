@@ -3,8 +3,8 @@ import { AgentStore } from "@effect-template/core/agent-directory/store";
 import { Agent, AgentId, AgentName } from "@effect-template/domain/agent";
 import { Effect, Layer, Option } from "effect";
 
-import { databasePgliteLayer } from "../test/database-pglite.ts";
-import { AgentStorePostgres } from "./agent-store-postgres.ts";
+import { databasePgliteLayer } from "../../test/database-pglite.ts";
+import { AgentStorePostgres } from "./index.ts";
 
 const persistenceLayer = AgentStorePostgres.layer.pipe(
   Layer.provide(databasePgliteLayer)
