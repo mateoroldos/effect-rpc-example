@@ -4,7 +4,10 @@
     ".": {
       "entry": ["alchemy.run.ts"],
       "ignore": ["commitlint.config.mjs"],
-      "ignoreDependencies": ["dependency-cruiser"]
+      "ignoreDependencies": ["auth", "dependency-cruiser"]
+    },
+    "packages/auth-better": {
+      "entry": ["src/schema-config.ts"]
     },
     "apps/web": {
       "entry": ["src/env.ts", "src/**/*.remote.ts"],

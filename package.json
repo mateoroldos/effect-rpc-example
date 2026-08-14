@@ -8,6 +8,8 @@
   ],
   "scripts": {
     "audit": "bun audit --audit-level=high",
+    "auth:schema:check": "bun scripts/auth-schema.ts check",
+    "auth:schema:generate": "bun scripts/auth-schema.ts generate",
     "check": "ultracite check",
     "check-arch": "sh scripts/check-arch.sh",
     "check-types": "turbo check-types && tsc -p tsconfig.alchemy.json",
@@ -28,7 +30,9 @@
     "knip": "knip",
     "prepare": "./scripts/prepare-effect.sh && effect-tsgo patch",
     "telemetry:up": "./scripts/start-maple.sh",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:integration:local": "bun run db:up && bun run test:integration"
   },
   "overrides": {
     "@effect/platform-node-shared": "4.0.0-beta.102",
@@ -44,6 +48,7 @@
     "@effect/vitest": "4.0.0-beta.102",
     "@types/bun": "catalog:",
     "alchemy": "2.0.0-beta.65",
+    "auth": "1.7.0-rc.5",
     "dependency-cruiser": "^18.1.1",
     "effect": "catalog:",
     "knip": "^6.29.0",
@@ -56,7 +61,11 @@
   "packageManager": "bun@1.3.14",
   "catalog": {
     "@effect/platform-node": "4.0.0-beta.102",
+    "@effect/sql-pg": "4.0.0-beta.102",
     "@types/bun": "^1.3.14",
-    "effect": "4.0.0-beta.102"
+    "@types/pg": "^8.20.3",
+    "drizzle-orm": "1.0.0-rc.4",
+    "effect": "4.0.0-beta.102",
+    "pg": "^8.22.0"
   }
 }

@@ -23,12 +23,14 @@ Arrows read "depends on". `domain` is the pure sink everyone points at.
 
 ```txt
 core → domain          rpc → domain          database → core, domain
-web  → rpc, domain      server → core, rpc, database
+auth-better → core, domain                 web → rpc, domain
+server → auth-better, core, rpc, database
 ```
 
 | Package | Responsibility |
 |---|---|
 | `packages/domain` | Pure shared vocabulary — branded domain types with no dependencies. |
+| `packages/auth-better` | Better Auth adapter for identity and Organization access. |
 | `packages/core` | Application services and the ports they depend on. |
 | `packages/database` | PostgreSQL lifecycle and adapters implementing core ports. |
 | `packages/rpc` | Transport-independent RPC contracts; handlers live in `apps/server`. |
@@ -253,6 +255,12 @@ the real interface, and no modules are mocked.
 | Contract | in-memory RPC client | RPC contract and error projection |
 | End-to-end | test HTTP server + real client | full transport round-trip |
 
+`bun run test:integration:local` starts or reuses the shared local PostgreSQL
+server, then runs `bun run test:integration`. Each test acquires, migrates, and
+drops a uniquely named database; it never uses a workspace's development
+database. `TEST_DATABASE_URL` must name a maintenance database whose user can
+create and drop databases. CI supplies it through a PostgreSQL service container.
+
 ## Scaling
 
 The layout scales by adding **module directories**, not a package per feature.
@@ -308,7 +316,9 @@ root supply the implementation — so cross-feature coupling never becomes a web
 | `bun run db:destroy` | Drop this workspace's database; leave the shared server up. |
 | `bun run db:nuke` | Remove the shared container, network, and data volume. |
 | `bun run check-types` | Type-check every package (with Effect compiler diagnostics) plus the Alchemy stack. |
-| `bun run test` | Run the test suite. |
+| `bun run test` | Run the unit test suite. |
+| `bun run test:integration` | Run isolated PostgreSQL integration tests against `TEST_DATABASE_URL`. |
+| `bun run test:integration:local` | Start or reuse local PostgreSQL, then run integration tests. |
 | `bun run check` | Format and lint. |
 | `bun run check-arch` | Enforce the dependency arrows (dependency-cruiser). |
 | `bun run knip` | Report unused files, exports, and dependencies. |

@@ -15,8 +15,10 @@ bun run env:setup      # seed each app's .env (create-if-missing)
 bun run db:setup       # start shared Postgres, create + migrate this workspace's db
 bun run dev            # API and Web through Portless
 bun run check-types    # tsc + Effect compiler diagnostics
-bun run test           # vitest
-bun run check          # format + lint (biome)
+bun run test                   # unit tests (vitest)
+bun run test:integration       # PostgreSQL integration tests; server must be available
+bun run test:integration:local # start/reuse local PostgreSQL, then run integration tests
+bun run check                  # format + lint (biome)
 bun run check-arch     # dependency-cruiser: the arrows below, enforced
 bun run knip           # dead files / exports / dependencies
 ```
@@ -34,16 +36,18 @@ Arrows read "depends on". `domain` is the pure sink everyone points at.
 
 ```txt
 core → domain          rpc → domain          database → core, domain
-web  → rpc, domain      server → core, rpc, database, observability
+auth-better → core, domain                 web → rpc, domain
+server → auth-better, core, rpc, database, observability
 ```
 
 These arrows are **enforced**, not aspirational: `bun run check-arch`
 (dependency-cruiser, config in `.dependency-cruiser.cjs`) fails on a reversed
-arrow, an adapter (`database`, `email`) imported outside `apps/server`, or a
+arrow, an adapter (`auth-better`, `database`, `email`) imported outside `apps/server`, or a
 dependency cycle. The allowed-imports table there is the source of truth — edit
 it and these arrows in the same change.
 
 - `packages/domain` — pure shared vocabulary (`Agent`, `AgentId`, `AgentName`); depends on nothing; consumed by web, rpc, core, and database.
+- `packages/auth-better` — Better Auth adapter implementing identity and Organization access boundaries.
 - `packages/core` — application services and the ports they depend on (domain types now live in `domain`).
 - `packages/database` — PostgreSQL adapters implementing core ports, drizzle config, schemas, and migrations.
 - `packages/observability` — reusable server telemetry adapter; applications choose its configuration.

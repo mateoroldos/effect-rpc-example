@@ -12,6 +12,7 @@
 /** package dir -> workspace packages it may depend on (besides itself). */
 const LAYERS = {
   "apps/server": [
+    "auth-better",
     "core",
     "database",
     "domain",
@@ -20,6 +21,7 @@ const LAYERS = {
     "rpc",
   ], // composition root
   "apps/web": ["rpc", "domain", "observability"], // + web server runtime telemetry
+  "packages/auth-better": ["core", "domain"],
   "packages/core": ["domain"],
   "packages/database": ["core", "domain"],
   "packages/domain": [], // pure sink — depends on nothing intra-repo
@@ -49,11 +51,13 @@ module.exports = {
 
     {
       comment:
-        "Concrete adapters (database, email) may only be imported by apps/server, the composition root. Depend on the port, never the technology; only the root names implementations.",
-      from: { pathNot: "^(apps/server/|packages/(database|email)/)" },
+        "Concrete adapters (auth-better, database, email) may only be imported by apps/server, the composition root. Depend on the port, never the technology; only the root names implementations.",
+      from: {
+        pathNot: "^(apps/server/|packages/(auth-better|database|email)/)",
+      },
       name: "adapter-only-in-composition-root",
       severity: "error",
-      to: { path: "^packages/(database|email)/" },
+      to: { path: "^packages/(auth-better|database|email)/" },
     },
 
     {
