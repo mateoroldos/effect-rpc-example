@@ -1,5 +1,6 @@
 import { NodeHttpServer } from "@effect/platform-node";
 import { assert, describe, it } from "@effect/vitest";
+import { BetterAuthHttp } from "@effect-template/auth-better/better-auth-http";
 import { AgentDirectory } from "@effect-template/core/agent-directory";
 import { AgentStore } from "@effect-template/core/agent-directory/store";
 import { AgentName } from "@effect-template/domain/agent";
@@ -10,8 +11,8 @@ import { HttpClient, HttpClientRequest } from "effect/unstable/http";
 import { RpcClient, RpcSerialization } from "effect/unstable/rpc";
 
 import { AuthorizationRpc } from "./auth/authorization-rpc/index.ts";
+import { httpServerLayer } from "./http/server.ts";
 import { agentsHandlersLayer } from "./rpc/agents.ts";
-import { rpcServerLayer } from "./rpc/server.ts";
 
 const organizationId = OrganizationId.make(
   "123e4567-e89b-42d3-a456-426614174001"
@@ -28,9 +29,16 @@ const agentsRpcHandlersTestLayer = agentsHandlersLayer.pipe(
   Layer.provide(AgentStore.layerMemory),
   Layer.provide(cryptoLayer)
 );
-const serverLayer = rpcServerLayer.pipe(
+const authHttpLayer = Layer.succeed(
+  BetterAuthHttp.Service,
+  BetterAuthHttp.Service.of({
+    handle: () => Effect.succeed(new Response(null, { status: 204 })),
+  })
+);
+const serverLayer = httpServerLayer.pipe(
   Layer.provide(agentsRpcHandlersTestLayer),
-  Layer.provide(AuthorizationRpc.layerAllowAll)
+  Layer.provide(AuthorizationRpc.layerAllowAll),
+  Layer.provide(authHttpLayer)
 );
 const clientProtocolLayer = RpcClient.layerProtocolHttp({
   transformClient: HttpClient.mapRequest(HttpClientRequest.appendUrl("/rpc")),
@@ -55,6 +63,14 @@ describe("server", () => {
           yield* client["Agents.Get"]({ id: created.id, organizationId }),
           created
         );
+      })
+    );
+
+    test.effect("delegates public auth routes to Better Auth", () =>
+      Effect.gen(function* () {
+        const http = yield* HttpClient.HttpClient;
+        const response = yield* http.get("/api/auth/session");
+        assert.strictEqual(response.status, 204);
       })
     );
 

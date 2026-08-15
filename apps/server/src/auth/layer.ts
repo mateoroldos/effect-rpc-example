@@ -1,4 +1,5 @@
 import { AuthorizationBetterAuth } from "@effect-template/auth-better/authorization";
+import { BetterAuthHttp } from "@effect-template/auth-better/better-auth-http";
 import { BetterAuthInstance } from "@effect-template/auth-better/better-auth-instance";
 // biome-ignore lint/performance/noNamespaceImport: Better Auth requires the complete generated schema module.
 import * as authSchema from "@effect-template/database/auth-schema";
@@ -25,12 +26,12 @@ const betterAuthInstanceLayer = Layer.unwrap(
   })
 );
 
-const betterAuthAuthorizationLayer =
-  AuthorizationBetterAuth.layerWithoutDependencies.pipe(
-    Layer.provide(betterAuthInstanceLayer)
-  );
-
-/** Better Auth-backed Organization authorization for server RPC handlers. */
-export const authLayer = AuthorizationRpc.layer.pipe(
-  Layer.provide(betterAuthAuthorizationLayer)
+const authorizationRpcLayer = AuthorizationRpc.layer.pipe(
+  Layer.provide(AuthorizationBetterAuth.layerWithoutDependencies)
 );
+
+/** Better Auth HTTP and request authorization capabilities for the server. */
+export const authLayer = Layer.merge(
+  BetterAuthHttp.layerWithoutDependencies,
+  authorizationRpcLayer
+).pipe(Layer.provide(betterAuthInstanceLayer));

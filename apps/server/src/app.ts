@@ -3,15 +3,15 @@ import { Config, Layer } from "effect";
 import { RpcSerialization } from "effect/unstable/rpc";
 
 import { authLayer } from "./auth/layer.ts";
+import { httpServerLayer } from "./http/server.ts";
 import { effectDatabaseLayer } from "./infra/database.ts";
 import { emailLayer } from "./infra/email.ts";
 import { PostgresPool } from "./infra/postgres-pool/index.ts";
 import { telemetryLayer } from "./infra/telemetry.ts";
 import { agentsHandlersLayerPostgres } from "./rpc/agents.ts";
-import { rpcServerLayer } from "./rpc/server.ts";
 
 /** Application Layer launched by the Bun server process. */
-export const appLayer = rpcServerLayer.pipe(
+export const appLayer = httpServerLayer.pipe(
   Layer.provide(agentsHandlersLayerPostgres),
   Layer.provide(authLayer),
   Layer.provide(effectDatabaseLayer),
