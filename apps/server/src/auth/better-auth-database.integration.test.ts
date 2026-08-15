@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest";
 import { AuthorizationBetterAuth } from "@effect-template/auth-better/authorization";
+import { BetterAuthEmail } from "@effect-template/auth-better/better-auth-email";
 import { BetterAuthInstance } from "@effect-template/auth-better/better-auth-instance";
 import { makeAuth } from "@effect-template/auth-better/config";
 // biome-ignore lint/performance/noNamespaceImport: Better Auth requires the complete generated schema module.
@@ -11,6 +12,16 @@ import { ConfigProvider, Effect, Layer, Redacted } from "effect";
 import { betterAuthDatabase, effectDatabaseLayer } from "../infra/database.ts";
 import { PostgresPool } from "../infra/postgres-pool/index.ts";
 import { acquireDisposableDatabaseUrl } from "../test/disposable-postgres.ts";
+
+const betterAuthEmail = BetterAuthEmail.Service.of({
+  sendInvitation: () => Effect.void,
+  sendPasswordReset: () => Effect.void,
+  sendVerification: () => Effect.void,
+});
+const betterAuthEmailLayer = Layer.succeed(
+  BetterAuthEmail.Service,
+  betterAuthEmail
+);
 
 describe("Better Auth database integration", () => {
   it.effect("persists auth data and authorizes Organization permissions", () =>
@@ -33,10 +44,15 @@ describe("Better Auth database integration", () => {
           yield* DatabasePostgres.runMigrations;
           const database = yield* betterAuthDatabase;
           const effectDatabase = yield* DatabasePostgres.Service;
-          const auth = makeAuth(database, authSchema, {
-            baseURL: "http://auth.integration.test",
-            secret: "integration-test-secret-at-least-32-characters",
-          });
+          const auth = makeAuth(
+            database,
+            authSchema,
+            {
+              baseURL: "http://auth.integration.test",
+              secret: "integration-test-secret-at-least-32-characters",
+            },
+            betterAuthEmail
+          );
 
           const ownerResponse = yield* Effect.tryPromise(() =>
             auth.api.signUpEmail({
@@ -107,7 +123,7 @@ describe("Better Auth database integration", () => {
                 BetterAuthInstance.layer(database, authSchema, {
                   baseURL: "http://auth.integration.test",
                   secret: "integration-test-secret-at-least-32-characters",
-                })
+                }).pipe(Layer.provide(betterAuthEmailLayer))
               )
             );
 

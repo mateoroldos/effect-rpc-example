@@ -1,7 +1,8 @@
 import type { DrizzleAdapterConfig } from "@better-auth/drizzle-adapter/relations-v2";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { Context, Layer } from "effect";
+import { Context, Effect, Layer } from "effect";
 
+import { Service as BetterAuthEmail } from "../better-auth-email/better-auth-email.ts";
 import {
   type BetterAuthInstance as ConfiguredBetterAuth,
   makeAuth,
@@ -25,7 +26,9 @@ export const layer = (
   schema: DrizzleAdapterConfig["schema"],
   runtime: RuntimeOptions
 ) =>
-  Layer.succeed(
+  Layer.effect(
     Service,
-    Service.of({ auth: makeAuth(database, schema, runtime) })
+    Effect.map(BetterAuthEmail, (email) =>
+      Service.of({ auth: makeAuth(database, schema, runtime, email) })
+    )
   );

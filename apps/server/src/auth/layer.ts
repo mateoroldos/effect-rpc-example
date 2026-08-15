@@ -1,4 +1,5 @@
 import { AuthorizationBetterAuth } from "@effect-template/auth-better/authorization";
+import { BetterAuthEmail } from "@effect-template/auth-better/better-auth-email";
 import { BetterAuthHttp } from "@effect-template/auth-better/better-auth-http";
 import { BetterAuthInstance } from "@effect-template/auth-better/better-auth-instance";
 // biome-ignore lint/performance/noNamespaceImport: Better Auth requires the complete generated schema module.
@@ -22,7 +23,7 @@ const betterAuthInstanceLayer = Layer.unwrap(
     return BetterAuthInstance.layer(database, authSchema, {
       baseURL,
       secret: Redacted.value(secret),
-    });
+    }).pipe(Layer.provide(BetterAuthEmail.layerWithoutDependencies));
   })
 );
 

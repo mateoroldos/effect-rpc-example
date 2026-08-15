@@ -24,5 +24,5 @@ export const appLayer = httpServerLayer.pipe(
     })
   ),
   Layer.provide(telemetryLayer),
-  Layer.merge(emailLayer)
+  Layer.provide(emailLayer)
 );
