@@ -1,18 +1,18 @@
 import { EmailSender } from "@effect-template/core/email";
 import { CloudflareEmailSender } from "@effect-template/email/cloudflare";
-import { Config, Effect, Layer, Option } from "effect";
+import { Layer } from "effect";
 import { FetchHttpClient } from "effect/unstable/http";
 
-/**
- * EmailSender for the server: the real Cloudflare adapter when an API token is
- * configured, a logging double otherwise (local dev needs no email creds).
- */
-export const emailLayer = Layer.unwrap(
-  Config.option(Config.redacted("CLOUDFLARE_EMAIL_API_TOKEN")).pipe(
-    Effect.map((token) =>
-      Option.isSome(token)
-        ? CloudflareEmailSender.layer.pipe(Layer.provide(FetchHttpClient.layer))
-        : EmailSender.layerLog
-    )
-  )
-);
+export type Options =
+  | { readonly _tag: "Log" }
+  | ({
+      readonly _tag: "Cloudflare";
+    } & CloudflareEmailSender.CloudflareEmailConfig);
+
+/** Selects local logging or Cloudflare delivery from parsed server configuration. */
+export const emailLayer = (configuration: Options) =>
+  configuration._tag === "Cloudflare"
+    ? CloudflareEmailSender.layer(configuration).pipe(
+        Layer.provide(FetchHttpClient.layer)
+      )
+    : EmailSender.layerLog;

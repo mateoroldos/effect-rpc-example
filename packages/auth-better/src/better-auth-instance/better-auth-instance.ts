@@ -20,9 +20,10 @@ export interface Options {
   readonly database: NodePgDatabase;
   readonly schema: DrizzleAdapterConfig["schema"];
   readonly secret: Redacted.Redacted<string>;
+  readonly trustedOrigins: string[];
 }
 
-const make = ({ baseUrl, database, schema, secret }: Options) =>
+const make = ({ baseUrl, database, schema, secret, trustedOrigins }: Options) =>
   Effect.gen(function* makeBetterAuthInstance() {
     const email = yield* BetterAuthEmail.Service;
     const runPromise = Effect.runPromiseWith(yield* Effect.context<never>());
@@ -50,6 +51,7 @@ const make = ({ baseUrl, database, schema, secret }: Options) =>
           }),
         ],
         secret: Redacted.value(secret),
+        trustedOrigins,
       }),
     };
   });

@@ -94,14 +94,15 @@ derived from the workspace id.
 
 | File | Owns | Loaded by |
 | --- | --- | --- |
-| `apps/server/.env` | `APP_ENV`, `OTEL_*` | Bun (from the app's cwd) |
+| `apps/server/.env` | `APP_ENV`, auth secrets, email, `OTEL_*` | Bun (from the app's cwd) |
 | `apps/web/.env` | `APP_ENV`, `OTEL_*` | Vite / SvelteKit |
 
-Two values are **derived in dev, explicit in prod**: `DATABASE_URL`
-(`eff_<id>` in the shared local Postgres) and `API_URL` (the workspace's portless
-URL). Both derive from the workspace id, which defaults to the directory name;
-override by exporting `DEV_INSTANCE`. Deploy creds are separate — see
-[`alchemy.env.example`](alchemy.env.example).
+Runtime locations are **derived in Portless development, explicit in production**.
+The server derives `DATABASE_URL`, `BETTER_AUTH_URL`, and `WEB_URL`; the web app
+derives `API_URL`. All use the workspace id, which defaults to the directory
+name; override it by exporting `DEV_INSTANCE`. Direct app development uses
+localhost URLs and requires `DATABASE_URL`. Production requires all four values.
+Deploy credentials are separate — see [`alchemy.env.example`](alchemy.env.example).
 
 Telemetry has one switch per app: `OTEL_EXPORTER_OTLP_ENDPOINT` set → export on,
 unset → console only (default). Locally, run `bun run telemetry:up` and uncomment

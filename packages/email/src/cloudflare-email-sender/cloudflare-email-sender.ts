@@ -1,5 +1,5 @@
 import { EmailSender } from "@effect-template/core/email";
-import { Config, Effect, Layer, Redacted } from "effect";
+import { Effect, Layer, Redacted } from "effect";
 import { HttpClient, HttpClientRequest } from "effect/unstable/http";
 
 /** Sender identity + credentials for one Cloudflare account's Email Sending. */
@@ -61,23 +61,12 @@ const make = (
   return { send };
 };
 
-/**
- * Cloudflare Email Sending adapter. Requires an `HttpClient` in context (the
- * server provides `FetchHttpClient.layer`). Reads its sender identity and the
- * account-scoped API token from configuration.
- */
-export const layer = Layer.effect(
-  EmailSender.Service,
-  Effect.gen(function* () {
-    const client = yield* HttpClient.HttpClient;
-    const config: CloudflareEmailConfig = {
-      accountId: yield* Config.string("CLOUDFLARE_ACCOUNT_ID"),
-      apiToken: yield* Config.redacted("CLOUDFLARE_EMAIL_API_TOKEN"),
-      fromAddress: yield* Config.string("EMAIL_FROM_ADDRESS"),
-      fromName: yield* Config.string("EMAIL_FROM_NAME").pipe(
-        Config.withDefault("effect-template")
-      ),
-    };
-    return EmailSender.Service.of(make(config, client));
-  })
-);
+/** Cloudflare Email Sending adapter requiring the server-selected `HttpClient`. */
+export const layer = (config: CloudflareEmailConfig) =>
+  Layer.effect(
+    EmailSender.Service,
+    Effect.gen(function* () {
+      const client = yield* HttpClient.HttpClient;
+      return EmailSender.Service.of(make(config, client));
+    })
+  );

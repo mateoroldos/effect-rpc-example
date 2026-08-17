@@ -5,7 +5,7 @@ import { DatabasePostgres } from "@effect-template/database/postgres";
 import { AgentName } from "@effect-template/domain/agent";
 import { OrganizationId } from "@effect-template/domain/organization";
 import { AgentsRpc } from "@effect-template/rpc/agents";
-import { ConfigProvider, Effect, Layer, Redacted, Schema } from "effect";
+import { Effect, Layer, Redacted, Schema } from "effect";
 import {
   HttpClient,
   HttpClientRequest,
@@ -36,25 +36,22 @@ it.effect("public authentication and Organization lifecycle", () =>
             }),
         })
       );
-      const configLayer = ConfigProvider.layer(
-        ConfigProvider.fromUnknown({
-          BETTER_AUTH_SECRET: Redacted.value(
-            Redacted.make("integration-test-secret-at-least-32-characters")
-          ),
-          BETTER_AUTH_URL: "http://localhost/api/auth",
-          DATABASE_URL: Redacted.value(databaseUrl),
-          WEB_URL: "http://localhost:5173",
-        })
-      );
       const serverLayer = httpServerLayer.pipe(
         Layer.provide(agentsHandlersLayerPostgres),
-        Layer.provide(authLayer),
+        Layer.provide(
+          authLayer({
+            apiBaseUrl: new URL("http://localhost"),
+            secret: Redacted.make(
+              "integration-test-secret-at-least-32-characters"
+            ),
+            webBaseUrl: new URL("http://localhost:5173"),
+          })
+        ),
         Layer.provideMerge(effectDatabaseLayer),
-        Layer.provide(PostgresPool.layer),
+        Layer.provide(PostgresPool.layer(databaseUrl)),
         Layer.provide(NodeCrypto.layer),
         Layer.provide(RpcSerialization.layerNdjson),
         Layer.provide(emailLayer),
-        Layer.provide(configLayer),
         Layer.provideMerge(NodeHttpServer.layerTest)
       );
 
