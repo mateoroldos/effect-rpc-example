@@ -41,7 +41,11 @@ export const variables = defineEnvVars({
   },
   OTEL_EXPORTER_OTLP_HEADERS_JSON: {
     public: false,
-    schema: Schema.toStandardSchemaV1(Schema.optional(Schema.NonEmptyString)),
+    schema: Schema.toStandardSchemaV1(
+      Schema.optional(
+        Schema.fromJsonString(Schema.Record(Schema.String, Schema.String))
+      )
+    ),
   },
   OTEL_SERVICE_VERSION: {
     public: false,

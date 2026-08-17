@@ -7,7 +7,7 @@ export interface CloudflareEmailConfig {
   readonly accountId: string;
   readonly apiToken: Redacted.Redacted<string>;
   /** Address on a domain onboarded via `wrangler email sending enable`. */
-  readonly fromAddress: string;
+  readonly fromAddress: EmailSender.EmailAddress;
   /** Display name shown to recipients. */
   readonly fromName: string;
 }
