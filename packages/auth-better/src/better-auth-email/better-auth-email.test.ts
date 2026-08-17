@@ -1,11 +1,13 @@
 import { assert, describe, it } from "@effect/vitest";
 import { EmailSender } from "@effect-template/core/email";
-import { ConfigProvider, Effect, Layer } from "effect";
+import { Effect, Layer } from "effect";
 
 import { BetterAuthEmail } from "./index.ts";
 
 const sent: EmailSender.EmailMessage[] = [];
-const testLayer = BetterAuthEmail.layerWithoutDependencies.pipe(
+const testLayer = BetterAuthEmail.layerWithoutDependencies({
+  webBaseUrl: new URL("https://app.example.com"),
+}).pipe(
   Layer.provide(
     Layer.succeed(
       EmailSender.Service,
@@ -15,11 +17,6 @@ const testLayer = BetterAuthEmail.layerWithoutDependencies.pipe(
             sent.push(message);
           }),
       })
-    )
-  ),
-  Layer.provide(
-    ConfigProvider.layer(
-      ConfigProvider.fromUnknown({ WEB_URL: "https://app.example.com" })
     )
   )
 );

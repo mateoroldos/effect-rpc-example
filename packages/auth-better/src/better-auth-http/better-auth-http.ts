@@ -1,6 +1,6 @@
 import { Context, Effect, Layer, Schema } from "effect";
 
-import { Service as BetterAuthInstance } from "../better-auth-instance/better-auth-instance.ts";
+import { BetterAuthInstance } from "../better-auth-instance/index.ts";
 
 /** Standard HTTP boundary for the configured Better Auth instance. */
 export interface Interface {
@@ -14,7 +14,7 @@ export class Service extends Context.Service<Service, Interface>()(
 ) {}
 
 const make = Effect.gen(function* makeBetterAuthHttp() {
-  const { auth } = yield* BetterAuthInstance;
+  const { auth } = yield* BetterAuthInstance.Service;
 
   const handle = Effect.fn("BetterAuthHttp.handle")((request: Request) =>
     Effect.tryPromise({
