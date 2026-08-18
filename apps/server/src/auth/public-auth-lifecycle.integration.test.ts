@@ -21,6 +21,8 @@ import { authLayer } from "./layer.ts";
 
 const OrganizationResponse = Schema.Struct({ id: OrganizationId });
 const InvitationResponse = Schema.Struct({ id: Schema.String });
+const apiBaseUrl = new URL("https://api.example.com");
+const webBaseUrl = new URL("https://app.example.com");
 
 it.effect("public authentication and Organization lifecycle", () =>
   Effect.scoped(
@@ -40,11 +42,14 @@ it.effect("public authentication and Organization lifecycle", () =>
         Layer.provide(agentsHandlersLayerPostgres),
         Layer.provide(
           authLayer({
-            apiBaseUrl: new URL("http://localhost"),
+            origins: {
+              api: apiBaseUrl,
+              cookieDomain: "example.com",
+              web: webBaseUrl,
+            },
             secret: Redacted.make(
               "integration-test-secret-at-least-32-characters"
             ),
-            webBaseUrl: new URL("http://localhost:5173"),
           })
         ),
         Layer.provideMerge(effectDatabaseLayer),
@@ -152,7 +157,7 @@ const authRequest = (
   method: "GET" | "POST" = "POST"
 ) => {
   const request = HttpClientRequest.make(method)(`/api/auth${path}`).pipe(
-    HttpClientRequest.setHeader("origin", "http://localhost:5173")
+    HttpClientRequest.setHeader("origin", webBaseUrl.origin)
   );
   const withCookie =
     cookie === undefined
@@ -166,7 +171,11 @@ const authRequest = (
 };
 
 const requireCookie = (response: HttpClientResponse.HttpClientResponse) => {
-  const cookie = response.headers["set-cookie"]?.split(";", 1)[0];
+  const setCookie = response.headers["set-cookie"];
+  assert.isDefined(setCookie);
+  assert.include(setCookie, "Domain=example.com");
+  assert.include(setCookie, "Secure");
+  const [cookie] = setCookie.split(";", 1);
   assert.isDefined(cookie);
   return cookie;
 };

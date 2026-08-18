@@ -11,19 +11,31 @@ import { BetterAuthEmail } from "../better-auth-email/index.ts";
 /** Parsed values required to construct Better Auth. */
 export interface Options {
   readonly baseUrl: URL;
+  readonly cookieDomain: string;
   readonly database: NodePgDatabase;
   readonly schema: DrizzleAdapterConfig["schema"];
   readonly secret: Redacted.Redacted<string>;
-  readonly trustedOrigins: string[];
+  readonly webBaseUrl: URL;
 }
 
-const make = ({ baseUrl, database, schema, secret, trustedOrigins }: Options) =>
+const make = ({
+  baseUrl,
+  cookieDomain,
+  database,
+  schema,
+  secret,
+  webBaseUrl,
+}: Options) =>
   Effect.gen(function* makeBetterAuthInstance() {
     const email = yield* BetterAuthEmail.Service;
     const runPromise = Effect.runPromiseWith(yield* Effect.context<never>());
 
     return {
       auth: makeBetterAuth({
+        advanced: {
+          crossSubDomainCookies: { domain: cookieDomain, enabled: true },
+          useSecureCookies: true,
+        },
         baseURL: baseUrl.toString(),
         database: drizzleAdapter(database, { provider: "pg", schema }),
         emailAndPassword: {
@@ -41,7 +53,7 @@ const make = ({ baseUrl, database, schema, secret, trustedOrigins }: Options) =>
             runPromise(email.sendInvitation(recipient, id)),
         },
         secret: Redacted.value(secret),
-        trustedOrigins,
+        trustedOrigins: [webBaseUrl.origin],
       }),
     };
   });

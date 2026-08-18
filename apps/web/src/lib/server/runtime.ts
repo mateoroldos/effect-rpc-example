@@ -4,12 +4,12 @@ import { Effect, Layer, ManagedRuntime, type Scope } from "effect";
 import { RpcClient, RpcSerialization } from "effect/unstable/rpc";
 import {
   APP_ENV,
+  DEV_INSTANCE,
   LOG_LEVEL,
   OTEL_EXPORTER_OTLP_ENDPOINT,
   OTEL_EXPORTER_OTLP_HEADERS_JSON,
   OTEL_SERVICE_VERSION,
 } from "$app/env/private";
-import { DEV_INSTANCE } from "$app/env/public";
 import { apiUrl } from "../api-url.ts";
 import { AppRpcClient } from "./rpc/client.ts";
 

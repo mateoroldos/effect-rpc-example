@@ -37,13 +37,14 @@ describe("Better Auth database integration", () => {
           const database = yield* betterAuthDatabase;
           const effectDatabase = yield* DatabasePostgres.Service;
           const instanceLayer = BetterAuthInstance.layerWithoutDependencies({
-            baseUrl: new URL("http://auth.integration.test"),
+            baseUrl: new URL("https://api.integration.test"),
+            cookieDomain: "integration.test",
             database,
             schema: authSchema,
             secret: Redacted.make(
               "integration-test-secret-at-least-32-characters"
             ),
-            trustedOrigins: ["http://app.integration.test"],
+            webBaseUrl: new URL("https://app.integration.test"),
           }).pipe(Layer.provide(betterAuthEmailLayer));
           const boundariesLayer = Layer.merge(
             instanceLayer,

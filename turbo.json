@@ -11,7 +11,7 @@
     "dev": {
       "cache": false,
       "persistent": true,
-      "passThroughEnv": ["API_URL", "DEV_INSTANCE"]
+      "passThroughEnv": ["APP_DOMAIN", "DEV_INSTANCE"]
     }
   }
 }

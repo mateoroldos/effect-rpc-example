@@ -7,12 +7,13 @@ type Environment = "development" | "production";
 export const load = Effect.gen(function* loadServerConfiguration() {
   const environment = yield* loadEnvironment;
   const devInstance = yield* loadDevInstance;
+  const publicOrigins = yield* loadPublicOrigins;
   return {
-    ...(yield* loadPublicUrls(environment, devInstance)),
     authSecret: yield* loadAuthSecret,
     databaseUrl: yield* loadDatabaseUrl(environment, devInstance),
     email: yield* loadEmail(environment),
     httpPort: yield* Config.port("PORT").pipe(Config.withDefault(3000)),
+    publicOrigins,
     telemetry: yield* loadTelemetry(environment, devInstance),
   };
 });
@@ -45,50 +46,22 @@ const loadAuthSecret = Effect.gen(function* loadAuthSecretConfiguration() {
   return secret;
 });
 
-const loadPublicUrls = (
-  environment: Environment,
-  devInstance: Option.Option<string>
-) =>
-  environment === "production"
-    ? Effect.gen(function* loadProductionOrigins() {
-        return {
-          apiBaseUrl: yield* loadPublicOrigin("BETTER_AUTH_URL"),
-          webBaseUrl: yield* loadPublicOrigin("WEB_URL"),
-        };
-      })
-    : Effect.succeed(
-        Option.match(devInstance, {
-          onNone: () => ({
-            apiBaseUrl: new URL("http://localhost:3000"),
-            webBaseUrl: new URL("http://localhost:5173"),
-          }),
-          onSome: (instance) => ({
-            apiBaseUrl: new URL(
-              `https://${instance}.api.effect-template.localhost`
-            ),
-            webBaseUrl: new URL(
-              `https://${instance}.effect-template.localhost`
-            ),
-          }),
-        })
-      );
-
-const loadPublicOrigin = (name: string) =>
-  Effect.gen(function* () {
-    const url = yield* Config.url(name);
-    if (
-      url.username !== "" ||
-      url.password !== "" ||
-      url.pathname !== "/" ||
-      url.search !== "" ||
-      url.hash !== ""
-    ) {
-      return yield* configurationFailure(
-        `${name} must be an origin without credentials, path, query, or fragment`
-      );
-    }
-    return url;
-  });
+const loadPublicOrigins = Config.schema(
+  Schema.String.pipe(
+    Schema.check(
+      Schema.isPattern(
+        /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/
+      )
+    )
+  ),
+  "APP_DOMAIN"
+).pipe(
+  Effect.map((domain) => ({
+    api: new URL(`https://api.${domain}`),
+    cookieDomain: domain,
+    web: new URL(`https://app.${domain}`),
+  }))
+);
 
 const loadDatabaseUrl = (
   environment: Environment,

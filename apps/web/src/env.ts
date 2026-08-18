@@ -2,10 +2,17 @@ import { defineEnvVars } from "@sveltejs/kit/env";
 import { Schema } from "effect";
 
 export const variables = defineEnvVars({
-  // Derived from DEV_INSTANCE in development; required in production.
-  API_URL: {
+  APP_DOMAIN: {
     public: true,
-    schema: Schema.toStandardSchemaV1(Schema.optional(Schema.NonEmptyString)),
+    schema: Schema.toStandardSchemaV1(
+      Schema.String.pipe(
+        Schema.check(
+          Schema.isPattern(
+            /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/
+          )
+        )
+      )
+    ),
   },
   APP_ENV: {
     public: false,
@@ -13,9 +20,9 @@ export const variables = defineEnvVars({
       Schema.Literals(["development", "production"])
     ),
   },
-  // Dev only; derives public service URLs and prefixes telemetry names.
+  // Dev only; prefixes telemetry names.
   DEV_INSTANCE: {
-    public: true,
+    public: false,
     schema: Schema.toStandardSchemaV1(Schema.optional(Schema.NonEmptyString)),
   },
   LOG_LEVEL: {
