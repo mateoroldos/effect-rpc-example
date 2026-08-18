@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import { page } from "$app/state";
   import { authClient } from "$lib/auth-client.ts";
   import { Button } from "$lib/components/ui/button/index.ts";
   import {
@@ -12,11 +13,15 @@
   import { Input } from "$lib/components/ui/input/index.ts";
   import { Label } from "$lib/components/ui/label/index.ts";
 
+  const emailVerified = $derived(
+    page.url.searchParams.get("verified") === "true"
+  );
+
   let email = $state("");
   let password = $state("");
-  let status = $state<"idle" | "submitting" | "invalid" | "unavailable">(
-    "idle"
-  );
+  let status = $state<
+    "idle" | "submitting" | "invalid" | "unverified" | "unavailable"
+  >("idle");
 
   const signIn = async (event: SubmitEvent) => {
     event.preventDefault();
@@ -24,7 +29,13 @@
 
     const { error } = await authClient.signIn.email({ email, password });
     if (error) {
-      status = error.status === 401 ? "invalid" : "unavailable";
+      if (error.status === 401) {
+        status = "invalid";
+      } else if (error.status === 403) {
+        status = "unverified";
+      } else {
+        status = "unavailable";
+      }
       return;
     }
 
@@ -69,9 +80,18 @@
           />
         </div>
 
-        {#if status === "invalid"}
+        {#if emailVerified && status === "idle"}
+          <p aria-live="polite" class="text-sm text-foreground">
+            Your email is verified. Sign in to continue.
+          </p>
+        {:else if status === "invalid"}
           <p aria-live="polite" class="text-sm text-destructive">
             The email or password is incorrect.
+          </p>
+        {:else if status === "unverified"}
+          <p aria-live="polite" class="text-sm text-destructive">
+            Verify your email before signing in. We sent a new verification
+            link.
           </p>
         {:else if status === "unavailable"}
           <p aria-live="polite" class="text-sm text-destructive">
@@ -82,6 +102,15 @@
         <Button disabled={status === "submitting"} type="submit">
           {status === "submitting" ? "Signing in…" : "Sign in"}
         </Button>
+        <p class="text-center text-sm text-muted-foreground">
+          Need an account?
+          <a
+            class="font-medium text-foreground underline underline-offset-4"
+            href="/signup"
+          >
+            Create one
+          </a>
+        </p>
       </form>
     </CardContent>
   </Card>

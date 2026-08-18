@@ -40,6 +40,7 @@ const make = ({
         database: drizzleAdapter(database, { provider: "pg", schema }),
         emailAndPassword: {
           enabled: true,
+          requireEmailVerification: true,
           sendResetPassword: ({ user, url }) =>
             runPromise(email.sendPasswordReset(user.email, url)),
         },

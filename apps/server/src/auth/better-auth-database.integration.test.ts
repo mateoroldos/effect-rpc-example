@@ -12,21 +12,23 @@ import { betterAuthDatabase, effectDatabaseLayer } from "../infra/database.ts";
 import { PostgresPool } from "../infra/postgres-pool/index.ts";
 import { acquireDisposableDatabaseUrl } from "../test/disposable-postgres.ts";
 
-const betterAuthEmail = BetterAuthEmail.Service.of({
-  sendInvitation: () => Effect.void,
-  sendPasswordReset: () => Effect.void,
-  sendVerification: () => Effect.void,
-});
-const betterAuthEmailLayer = Layer.succeed(
-  BetterAuthEmail.Service,
-  betterAuthEmail
-);
-
 describe("Better Auth database integration", () => {
   it.effect("persists auth data and authorizes Organization permissions", () =>
     Effect.scoped(
       Effect.gen(function* () {
         const databaseUrl = yield* acquireDisposableDatabaseUrl;
+        const verificationUrls: string[] = [];
+        const betterAuthEmailLayer = Layer.succeed(
+          BetterAuthEmail.Service,
+          BetterAuthEmail.Service.of({
+            sendInvitation: () => Effect.void,
+            sendPasswordReset: () => Effect.void,
+            sendVerification: (_email, url) =>
+              Effect.sync(() => {
+                verificationUrls.push(url);
+              }),
+          })
+        );
 
         const testDatabaseLayer = effectDatabaseLayer.pipe(
           Layer.provideMerge(PostgresPool.layer(databaseUrl))
@@ -60,20 +62,42 @@ describe("Better Auth database integration", () => {
             Effect.provide(boundaries)
           );
 
-          const ownerResponse = yield* Effect.tryPromise(() =>
-            auth.api.signUpEmail({
-              asResponse: true,
-              body: {
-                email: "owner@example.com",
-                name: "Owner",
-                password: "correct horse battery staple",
-              },
-            })
-          );
-          const ownerCookie = ownerResponse.headers
-            .get("set-cookie")
-            ?.split(";", 1)[0];
-          assert.ok(ownerCookie);
+          const register = (email: string, name: string) =>
+            Effect.gen(function* () {
+              yield* Effect.tryPromise(() =>
+                auth.api.signUpEmail({
+                  body: {
+                    callbackURL: "https://app.integration.test/login",
+                    email,
+                    name,
+                    password: "correct horse battery staple",
+                  },
+                })
+              );
+              const verificationUrl = verificationUrls.at(-1);
+              assert.isDefined(verificationUrl);
+              const verificationResponse = yield* Effect.tryPromise(() =>
+                auth.handler(new Request(verificationUrl))
+              );
+              assert.strictEqual(verificationResponse.status, 302);
+
+              const response = yield* Effect.tryPromise(() =>
+                auth.api.signInEmail({
+                  asResponse: true,
+                  body: {
+                    email,
+                    password: "correct horse battery staple",
+                  },
+                })
+              );
+              const cookie = response.headers
+                .get("set-cookie")
+                ?.split(";", 1)[0];
+              assert.isDefined(cookie);
+              return cookie;
+            });
+
+          const ownerCookie = yield* register("owner@example.com", "Owner");
           const ownerHeaders = new Headers({ cookie: ownerCookie });
           const ownerSession = yield* Effect.tryPromise(() =>
             auth.api.getSession({ headers: ownerHeaders })
@@ -92,20 +116,7 @@ describe("Better Auth database integration", () => {
               headers: ownerHeaders,
             })
           );
-          const memberResponse = yield* Effect.tryPromise(() =>
-            auth.api.signUpEmail({
-              asResponse: true,
-              body: {
-                email: "member@example.com",
-                name: "Member",
-                password: "correct horse battery staple",
-              },
-            })
-          );
-          const memberCookie = memberResponse.headers
-            .get("set-cookie")
-            ?.split(";", 1)[0];
-          assert.ok(memberCookie);
+          const memberCookie = yield* register("member@example.com", "Member");
           const memberHeaders = new Headers({ cookie: memberCookie });
           const memberSession = yield* Effect.tryPromise(() =>
             auth.api.getSession({ headers: memberHeaders })
