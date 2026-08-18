@@ -3,24 +3,19 @@ import { makeServerLayer } from "@effect-template/observability";
 import { Effect, Layer, ManagedRuntime, type Scope } from "effect";
 import { RpcClient, RpcSerialization } from "effect/unstable/rpc";
 import {
-  API_URL,
   APP_ENV,
-  DEV_INSTANCE,
   LOG_LEVEL,
   OTEL_EXPORTER_OTLP_ENDPOINT,
   OTEL_EXPORTER_OTLP_HEADERS_JSON,
   OTEL_SERVICE_VERSION,
 } from "$app/env/private";
+import { DEV_INSTANCE } from "$app/env/public";
+import { apiUrl } from "../api-url.ts";
 import { AppRpcClient } from "./rpc/client.ts";
 
 const serviceName = DEV_INSTANCE
   ? `${DEV_INSTANCE}-web`
   : "effect-template-web";
-
-// Dev: the API is this workspace's portless URL (mirrors the server's --name).
-// Prod sets API_URL explicitly. Assumes default portless (https/443).
-const apiUrl =
-  API_URL ?? `https://${DEV_INSTANCE}.api.effect-template.localhost`;
 
 const protocolLayer = RpcClient.layerProtocolHttp({
   url: `${apiUrl}/rpc`,

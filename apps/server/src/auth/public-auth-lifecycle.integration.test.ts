@@ -36,7 +36,7 @@ it.effect("public authentication and Organization lifecycle", () =>
             }),
         })
       );
-      const serverLayer = httpServerLayer.pipe(
+      const serverLayer = httpServerLayer("http://localhost:5173").pipe(
         Layer.provide(agentsHandlersLayerPostgres),
         Layer.provide(
           authLayer({

@@ -53,6 +53,7 @@
         "@effect-template/observability": "workspace:*",
         "@effect-template/rpc": "workspace:*",
         "@effect/platform-node": "catalog:",
+        "better-auth": "1.7.0-rc.5",
         "effect": "catalog:",
       },
       "devDependencies": {

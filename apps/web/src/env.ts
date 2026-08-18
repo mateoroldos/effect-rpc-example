@@ -2,9 +2,9 @@ import { defineEnvVars } from "@sveltejs/kit/env";
 import { Schema } from "effect";
 
 export const variables = defineEnvVars({
-  // Dev: derived from DEV_INSTANCE in runtime.ts. Required in prod.
+  // Derived from DEV_INSTANCE in development; required in production.
   API_URL: {
-    public: false,
+    public: true,
     schema: Schema.toStandardSchemaV1(Schema.optional(Schema.NonEmptyString)),
   },
   APP_ENV: {
@@ -13,9 +13,9 @@ export const variables = defineEnvVars({
       Schema.Literals(["development", "production"])
     ),
   },
-  // Dev only; prefixes the OTel service name in runtime.ts.
+  // Dev only; derives public service URLs and prefixes telemetry names.
   DEV_INSTANCE: {
-    public: false,
+    public: true,
     schema: Schema.toStandardSchemaV1(Schema.optional(Schema.NonEmptyString)),
   },
   LOG_LEVEL: {
