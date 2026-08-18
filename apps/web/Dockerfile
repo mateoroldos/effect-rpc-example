@@ -16,9 +16,11 @@ RUN bun install --frozen-lockfile --ignore-scripts
 COPY --from=prune /app/out/full/ .
 # turbo prune omits root config; the web tsconfig chain extends this.
 COPY tsconfig.base.json ./tsconfig.base.json
-# SvelteKit validates required private env at build; placeholders satisfy it
-# without baking in — Railway supplies real values at runtime.
-ENV API_URL=http://build-placeholder \
+# SvelteKit validates env when the app boots, and `vite build` boots it to
+# analyse routes. These vars are non-static, so the placeholders are never
+# inlined — Railway supplies the real values at runtime. `.invalid` is the
+# reserved TLD (RFC 2606) and satisfies the APP_DOMAIN pattern.
+ENV APP_DOMAIN=build-placeholder.invalid \
     APP_ENV=production
 RUN bun run --cwd apps/web build
 
