@@ -1,5 +1,6 @@
 import { User } from "@effect-template/domain/identity";
-import { Effect, Option, Schema } from "effect";
+import { Effect, Option, Schema, type Tracer } from "effect";
+import { HttpTraceContext } from "effect/unstable/http";
 import { authClient } from "$lib/auth-client.ts";
 import { webOrigin } from "$lib/public-origins.ts";
 
@@ -20,12 +21,13 @@ const decodeUser = Schema.decodeUnknownOption(User);
 /** Resolves a request cookie into the safe authenticated User used by SvelteKit. */
 export const resolveAuthentication = Effect.fn("Authentication.resolve")(
   function* (request: Request) {
+    const span = yield* Effect.option(Effect.currentSpan);
     const { data, error } = yield* Effect.tryPromise({
       catch: (cause) => new Unreachable({ cause }),
       try: (signal) =>
         authClient.getSession({
           fetchOptions: {
-            headers: authenticationHeaders(request.headers),
+            headers: authenticationHeaders(request.headers, span),
             signal,
           },
         }),
@@ -44,11 +46,26 @@ export const resolveAuthentication = Effect.fn("Authentication.resolve")(
   }
 );
 
-const authenticationHeaders = (requestHeaders: Headers) => {
+/**
+ * Forwards the session cookie, the trusted web Origin, and the current trace
+ * context. Better Auth uses its own fetch, so Effect's HttpClient never gets to
+ * propagate the trace itself.
+ */
+const authenticationHeaders = (
+  requestHeaders: Headers,
+  span: Option.Option<Tracer.Span>
+) => {
   const headers = new Headers({ origin: webOrigin });
   const cookie = requestHeaders.get("cookie");
   if (cookie !== null) {
     headers.set("cookie", cookie);
+  }
+  if (Option.isSome(span)) {
+    for (const [name, value] of Object.entries(
+      HttpTraceContext.toHeaders(span.value)
+    )) {
+      headers.set(name, value);
+    }
   }
   return headers;
 };
