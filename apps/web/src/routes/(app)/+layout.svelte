@@ -1,7 +1,7 @@
 <script lang="ts">
+  import { authClient } from "#lib/auth-client.ts";
+  import { Button } from "#lib/components/ui/button/index.ts";
   import { goto } from "$app/navigation";
-  import { authClient } from "$lib/auth-client.ts";
-  import { Button } from "$lib/components/ui/button/index.ts";
   import type { LayoutProps } from "./$types";
 
   let { children, data }: LayoutProps = $props();
@@ -14,7 +14,7 @@
       signingOut = false;
       return;
     }
-    await goto("/login", { invalidateAll: true });
+    await goto("/login", { refreshAll: true });
   };
 </script>
 

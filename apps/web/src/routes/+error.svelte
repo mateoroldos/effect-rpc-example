@@ -1,15 +1,15 @@
 <script lang="ts">
   import ArrowClockwise from "phosphor-svelte/lib/ArrowClockwise";
   import WarningCircle from "phosphor-svelte/lib/WarningCircle";
-  import { page } from "$app/state";
-  import { Button } from "$lib/components/ui/button";
+  import { Button } from "#lib/components/ui/button/index.js";
   import {
     Card,
     CardContent,
     CardDescription,
     CardHeader,
     CardTitle,
-  } from "$lib/components/ui/card";
+  } from "#lib/components/ui/card/index.js";
+  import { page } from "$app/state";
 
   const serviceUnavailable = $derived(page.status === 503);
 </script>

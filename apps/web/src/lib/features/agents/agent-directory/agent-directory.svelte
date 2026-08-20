@@ -5,10 +5,10 @@
     Alert,
     AlertDescription,
     AlertTitle,
-  } from "$lib/components/ui/alert";
-  import { Button } from "$lib/components/ui/button";
-  import { Skeleton } from "$lib/components/ui/skeleton";
-  import { getAgents } from "$lib/remotes/agents.remote";
+  } from "#lib/components/ui/alert/index.js";
+  import { Button } from "#lib/components/ui/button/index.js";
+  import { Skeleton } from "#lib/components/ui/skeleton/index.js";
+  import { getAgents } from "#lib/remotes/agents.remote.js";
   import AgentGrid from "./agent-grid.svelte";
 
   let { organizationId }: { organizationId: OrganizationId } = $props();

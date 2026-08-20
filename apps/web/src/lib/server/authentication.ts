@@ -1,8 +1,8 @@
 import { User } from "@effect-template/domain/identity";
 import { Effect, Option, Schema, type Tracer } from "effect";
 import { HttpTraceContext } from "effect/unstable/http";
-import { authClient } from "$lib/auth-client.ts";
-import { webOrigin } from "$lib/public-origins.ts";
+import { authClient } from "#lib/auth-client.ts";
+import { webOrigin } from "#lib/public-origins.ts";
 
 /** Indicates that the identity provider could not resolve the request session. */
 class Unreachable extends Schema.TaggedErrorClass<Unreachable>()(

@@ -1,6 +1,6 @@
 <script lang="ts">
   import Robot from "phosphor-svelte/lib/Robot";
-  import { Card, CardContent } from "$lib/components/ui/card";
+  import { Card, CardContent } from "#lib/components/ui/card/index.js";
   import type { AgentListItem } from "../agent-list-item";
   import AgentCard from "./agent-card.svelte";
   import CreatingAgentCard from "./creating-agent-card.svelte";
