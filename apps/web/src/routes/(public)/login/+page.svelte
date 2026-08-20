@@ -39,7 +39,7 @@
       return;
     }
 
-    await goto("/", { invalidateAll: true });
+    await goto("/", { refreshAll: true });
   };
 </script>
 

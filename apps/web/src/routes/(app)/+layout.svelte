@@ -14,7 +14,7 @@
       signingOut = false;
       return;
     }
-    await goto("/login", { invalidateAll: true });
+    await goto("/login", { refreshAll: true });
   };
 </script>
 
