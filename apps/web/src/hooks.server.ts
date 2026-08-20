@@ -1,7 +1,8 @@
-import { error, type Handle, redirect, type ServerInit } from "@sveltejs/kit";
+import { error, redirect } from "@sveltejs/kit";
+import type { Handle, ServerInit } from "@sveltejs/kit/hooks";
 import { Match, Option } from "effect";
-import { resolveAuthentication } from "$lib/server/authentication.ts";
-import { disposeRuntime, run } from "$lib/server/runtime";
+import { resolveAuthentication } from "#lib/server/authentication.ts";
+import { disposeRuntime, run } from "#lib/server/runtime.js";
 
 /** Resolves authenticated request state before protected routes and remote functions run. */
 export const handle: Handle = async ({ event, resolve }) => {

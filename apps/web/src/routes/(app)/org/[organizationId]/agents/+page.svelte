@@ -1,6 +1,6 @@
 <script lang="ts">
-  import AgentDirectory from "$lib/features/agents/agent-directory/agent-directory.svelte";
-  import CreateAgentForm from "$lib/features/agents/create-agent-form.svelte";
+  import AgentDirectory from "#lib/features/agents/agent-directory/agent-directory.svelte";
+  import CreateAgentForm from "#lib/features/agents/create-agent-form.svelte";
   import type { PageProps } from "./$types";
 
   let { data }: PageProps = $props();

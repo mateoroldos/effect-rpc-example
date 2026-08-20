@@ -1,16 +1,16 @@
 <script lang="ts">
-  import { authClient } from "$lib/auth-client.ts";
-  import { Button } from "$lib/components/ui/button/index.ts";
+  import { authClient } from "#lib/auth-client.ts";
+  import { Button } from "#lib/components/ui/button/index.ts";
   import {
     Card,
     CardContent,
     CardDescription,
     CardHeader,
     CardTitle,
-  } from "$lib/components/ui/card/index.ts";
-  import { Input } from "$lib/components/ui/input/index.ts";
-  import { Label } from "$lib/components/ui/label/index.ts";
-  import { webOrigin } from "$lib/public-origins.ts";
+  } from "#lib/components/ui/card/index.ts";
+  import { Input } from "#lib/components/ui/input/index.ts";
+  import { Label } from "#lib/components/ui/label/index.ts";
+  import { webOrigin } from "#lib/public-origins.ts";
 
   let email = $state("");
   let name = $state("");

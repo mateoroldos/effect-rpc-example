@@ -6,7 +6,7 @@
     CardDescription,
     CardHeader,
     CardTitle,
-  } from "$lib/components/ui/card";
+  } from "#lib/components/ui/card/index.js";
 
   let { agent }: { readonly agent: Agent } = $props();
 </script>
