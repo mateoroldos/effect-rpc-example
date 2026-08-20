@@ -30,7 +30,7 @@
     "knip": "knip",
     "prepare": "./scripts/prepare-effect.sh && effect-tsgo patch",
     "telemetry:up": "./scripts/start-maple.sh",
-    "test": "vitest run",
+    "test": "bun run --cwd apps/web sync && vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:integration:local": "bun run db:up && bun run test:integration"
   },
