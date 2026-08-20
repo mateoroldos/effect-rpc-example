@@ -2,17 +2,11 @@ import {
   type DrizzleAdapterConfig,
   drizzleAdapter,
 } from "@better-auth/drizzle-adapter/relations-v2";
-import { betterAuth } from "better-auth";
-import { organization } from "better-auth/plugins";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Context, Effect, Layer, Redacted } from "effect";
 
+import { makeBetterAuth } from "../better-auth.ts";
 import { BetterAuthEmail } from "../better-auth-email/index.ts";
-import {
-  databaseOptions,
-  emailAndPasswordPolicy,
-  organizationPolicy,
-} from "../config.ts";
 
 /** Parsed values required to construct Better Auth. */
 export interface Options {
@@ -29,12 +23,11 @@ const make = ({ baseUrl, database, schema, secret, trustedOrigins }: Options) =>
     const runPromise = Effect.runPromiseWith(yield* Effect.context<never>());
 
     return {
-      auth: betterAuth({
-        advanced: { database: databaseOptions },
+      auth: makeBetterAuth({
         baseURL: baseUrl.toString(),
         database: drizzleAdapter(database, { provider: "pg", schema }),
         emailAndPassword: {
-          ...emailAndPasswordPolicy,
+          enabled: true,
           sendResetPassword: ({ user, url }) =>
             runPromise(email.sendPasswordReset(user.email, url)),
         },
@@ -43,13 +36,10 @@ const make = ({ baseUrl, database, schema, secret, trustedOrigins }: Options) =>
           sendVerificationEmail: ({ user, url }) =>
             runPromise(email.sendVerification(user.email, url)),
         },
-        plugins: [
-          organization({
-            ...organizationPolicy,
-            sendInvitationEmail: ({ email: recipient, id }) =>
-              runPromise(email.sendInvitation(recipient, id)),
-          }),
-        ],
+        organization: {
+          sendInvitationEmail: ({ email: recipient, id }) =>
+            runPromise(email.sendInvitation(recipient, id)),
+        },
         secret: Redacted.value(secret),
         trustedOrigins,
       }),

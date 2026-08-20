@@ -12,7 +12,7 @@ export const load = Effect.gen(function* loadServerConfiguration() {
     authSecret: yield* loadAuthSecret,
     databaseUrl: yield* loadDatabaseUrl(environment, devInstance),
     email: yield* loadEmail(environment),
-    httpPort: yield* loadHttpPort,
+    httpPort: yield* Config.port("PORT").pipe(Config.withDefault(3000)),
     telemetry: yield* loadTelemetry(environment, devInstance),
   };
 });
@@ -44,8 +44,6 @@ const loadAuthSecret = Effect.gen(function* loadAuthSecretConfiguration() {
   }
   return secret;
 });
-
-const loadHttpPort = Config.port("PORT").pipe(Config.withDefault(3000));
 
 const loadPublicUrls = (
   environment: Environment,
