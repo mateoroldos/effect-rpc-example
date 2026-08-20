@@ -1,12 +1,16 @@
-import { error, redirect } from "@sveltejs/kit";
+import { error } from "@sveltejs/kit";
 import type { Handle, ServerInit } from "@sveltejs/kit/hooks";
-import { Match, Option } from "effect";
+import { Match } from "effect";
 import { resolveAuthentication } from "#lib/server/authentication.ts";
+import {
+  requireAuthenticatedUser,
+  requiresAuthentication,
+} from "#lib/server/protected-route.ts";
 import { disposeRuntime, run } from "#lib/server/runtime.js";
 
 /** Resolves authenticated request state before protected routes and remote functions run. */
 export const handle: Handle = async ({ event, resolve }) => {
-  if (event.route.id?.startsWith("/(app)") !== true) {
+  if (!requiresAuthentication(event.route.id)) {
     return resolve(event);
   }
 
@@ -23,11 +27,7 @@ export const handle: Handle = async ({ event, resolve }) => {
       ),
     { signal: event.request.signal }
   );
-  if (Option.isNone(user)) {
-    redirect(303, "/login");
-  }
-
-  event.locals.user = user.value;
+  event.locals.user = requireAuthenticatedUser(user);
   return resolve(event);
 };
 

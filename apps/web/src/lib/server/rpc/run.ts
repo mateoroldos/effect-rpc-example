@@ -1,10 +1,11 @@
 import { error } from "@sveltejs/kit";
 import { Effect, Filter, Result } from "effect";
-import { RpcClient, type RpcClientError } from "effect/unstable/rpc";
+import type { RpcClientError } from "effect/unstable/rpc";
 import { getRequestEvent } from "$app/server";
-import { forwardedHeaders } from "../better-auth/forwarded-headers.ts";
+import { webOrigin } from "../../public-origins.ts";
 import { AppRpcClient } from "../rpc/client.ts";
 import { run } from "../runtime.ts";
+import { withRequestHeaders } from "./request-headers.ts";
 
 /** Runs an RPC operation and projects its typed failures at the SvelteKit boundary. */
 export const runRpc = <A, E extends { readonly _tag: string }>(
@@ -15,8 +16,10 @@ export const runRpc = <A, E extends { readonly _tag: string }>(
 ): Promise<A> => {
   const { request } = getRequestEvent();
   return run(
-    Effect.flatMap(forwardedHeaders(request.headers), (headers) =>
-      RpcClient.withHeaders(Effect.flatMap(AppRpcClient, operation), headers)
+    withRequestHeaders(
+      Effect.flatMap(AppRpcClient, operation),
+      request.headers,
+      webOrigin
     ),
     (failure) =>
       Result.match(Filter.tagged("RpcClientError")(failure), {
