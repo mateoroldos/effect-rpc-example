@@ -47,11 +47,11 @@ dependency cycle. The allowed-imports table there is the source of truth — edi
 it and these arrows in the same change.
 
 - `packages/domain` — pure shared vocabulary (`Agent`, `AgentId`, `AgentName`); depends on nothing; consumed by web, rpc, core, and database.
-- `packages/auth-better` — Better Auth adapter implementing identity and Organization access boundaries.
+- `packages/auth-better` — Better Auth adapter implementing identity and Organization authorization boundaries.
 - `packages/core` — application services and the ports they depend on (domain types now live in `domain`).
 - `packages/database` — PostgreSQL adapters implementing core ports, drizzle config, schemas, and migrations.
 - `packages/observability` — reusable server telemetry adapter; applications choose its configuration.
-- `packages/rpc` — transport-independent RPC contracts; the concrete handlers are an inbound adapter in `apps/server`.
+- `packages/rpc` — transport-independent RPC contracts. `apps/server` decorates those contracts with server middleware and supplies the concrete handlers as the inbound adapter.
 - `apps/server` — API composition root; provides concrete database, RPC, and telemetry Layers.
 - `apps/web` — web composition root and traced server-side RPC client.
 
@@ -145,7 +145,12 @@ themselves. Package subpaths point to `index.ts`. Relative imports of a module
 boundary include `/index.ts`; package consumers use the exported subpath.
 `layerWithoutDependencies` leaves requirements unfilled for composition; `layer`
 is production-ready. Yield stable deps while building; yield request-scoped
-values inside the method that uses them.
+values inside the method that uses them. Server middleware captures credentials
+and provides `Authorization` directly; handlers call Directories without
+request-composition helpers. Each Directory selects and requires its own
+Organization Permission before Store access; each Store repeats `OrganizationId`
+scope independently. Non-RPC entry points provide the same core capability from
+their own command context.
 
 ## Domain & schemas
 

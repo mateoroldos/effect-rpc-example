@@ -1,5 +1,7 @@
 import { Schema } from "effect";
 
+import { OrganizationId } from "../organization/organization.ts";
+
 /** Decodes UUID-v4 strings into branded Agent identities. */
 export const AgentId = Schema.String.pipe(
   Schema.check(Schema.isUUID(4)),
@@ -22,6 +24,7 @@ export type AgentName = typeof AgentName.Type;
 export const Agent = Schema.Struct({
   id: AgentId,
   name: AgentName,
+  organizationId: OrganizationId,
 });
 
 /** An Agent with a valid identity and canonical name. */

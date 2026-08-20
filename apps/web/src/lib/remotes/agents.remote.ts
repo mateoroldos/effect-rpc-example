@@ -11,34 +11,42 @@ const persistedAgent = (agent: Agent): AgentListItem => ({
   agent,
 });
 
-export const getAgents = query(async (): Promise<readonly AgentListItem[]> => {
-  const agents = await runRpc(
-    (client) => client["Agents.List"](),
-    (failure) =>
-      Match.value(failure).pipe(
-        Match.tagsExhaustive({
-          "AgentsRpc.Unavailable": () =>
-            error(503, "The Agents service is unavailable"),
-        })
-      )
-  );
-  return agents.map(persistedAgent);
-});
-
-export const createAgent = form(
-  Schema.toStandardSchemaV1(AgentsRpc.CreateAgentInput),
-  async ({ name }) => {
-    await runRpc(
-      (client) => client["Agents.Create"]({ name }),
+export const getAgents = query(
+  Schema.toStandardSchemaV1(AgentsRpc.ListAgentsInput),
+  async ({ organizationId }): Promise<readonly AgentListItem[]> => {
+    const agents = await runRpc(
+      (client) => client["Agents.List"]({ organizationId }),
       (failure) =>
         Match.value(failure).pipe(
           Match.tagsExhaustive({
+            "AgentsRpc.Forbidden": () => error(404, "Organization not found"),
+            "AgentsRpc.Unauthenticated": () =>
+              error(401, "Sign in to continue."),
             "AgentsRpc.Unavailable": () =>
-              error(503, "The Agents service is unavailable"),
+              error(503, "Agents could not be loaded. Try again later."),
           })
         )
     );
+    return agents.map(persistedAgent);
+  }
+);
 
+export const createAgent = form(
+  Schema.toStandardSchemaV1(AgentsRpc.CreateAgentInput),
+  async ({ name, organizationId }) => {
+    await runRpc(
+      (client) => client["Agents.Create"]({ name, organizationId }),
+      (failure) =>
+        Match.value(failure).pipe(
+          Match.tagsExhaustive({
+            "AgentsRpc.Forbidden": () => error(404, "Organization not found"),
+            "AgentsRpc.Unauthenticated": () =>
+              error(401, "Sign in to continue."),
+            "AgentsRpc.Unavailable": () =>
+              error(503, "The Agent could not be created. Try again later."),
+          })
+        )
+    );
     await requested(getAgents, 1).refreshAll();
   }
 );

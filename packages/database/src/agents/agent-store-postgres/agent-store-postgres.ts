@@ -1,6 +1,7 @@
 import { AgentStore } from "@effect-template/core/agent-directory/store";
 import { Agent, type AgentId } from "@effect-template/domain/agent";
-import { eq } from "drizzle-orm";
+import type { OrganizationId } from "@effect-template/domain/organization";
+import { and, eq } from "drizzle-orm";
 import type { EffectPgDatabase } from "drizzle-orm/effect-postgres";
 import { Effect, Layer, Option, Schema } from "effect";
 
@@ -22,7 +23,11 @@ const make = (database: EffectPgDatabase): AgentStore.Interface => {
   const create = Effect.fn("AgentStorePostgres.create")((agent: Agent) =>
     database
       .insert(agents)
-      .values({ id: agent.id, name: agent.name })
+      .values({
+        id: agent.id,
+        name: agent.name,
+        organizationId: agent.organizationId,
+      })
       .pipe(
         Effect.mapError(
           (cause: unknown) => new AgentStore.PersistenceError({ cause })
@@ -31,11 +36,14 @@ const make = (database: EffectPgDatabase): AgentStore.Interface => {
       )
   );
 
-  const find = Effect.fn("AgentStorePostgres.find")(function* (id: AgentId) {
+  const find = Effect.fn("AgentStorePostgres.find")(function* (
+    organizationId: OrganizationId,
+    id: AgentId
+  ) {
     const rows = yield* database
       .select()
       .from(agents)
-      .where(eq(agents.id, id))
+      .where(and(eq(agents.organizationId, organizationId), eq(agents.id, id)))
       .limit(1)
       .pipe(
         Effect.mapError(
@@ -46,16 +54,19 @@ const make = (database: EffectPgDatabase): AgentStore.Interface => {
     return agent === undefined ? Option.none() : Option.some(agent);
   });
 
-  const list = database
-    .select()
-    .from(agents)
-    .pipe(
-      Effect.mapError(
-        (cause: unknown) => new AgentStore.PersistenceError({ cause })
-      ),
-      Effect.flatMap(decodeRows),
-      Effect.withSpan("AgentStorePostgres.list")
-    );
+  const list = Effect.fn("AgentStorePostgres.list")(
+    (organizationId: OrganizationId) =>
+      database
+        .select()
+        .from(agents)
+        .where(eq(agents.organizationId, organizationId))
+        .pipe(
+          Effect.mapError(
+            (cause: unknown) => new AgentStore.PersistenceError({ cause })
+          ),
+          Effect.flatMap(decodeRows)
+        )
+  );
 
   return AgentStore.Service.of({ create, find, list });
 };

@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./agent": "./src/agent/agent.ts"
+    "./agent": "./src/agent/agent.ts",
+    "./identity": "./src/identity/identity.ts",
+    "./organization": "./src/organization/organization.ts"
   },
   "scripts": {
     "check-types": "tsc"

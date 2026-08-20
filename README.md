@@ -30,7 +30,7 @@ server → auth-better, core, rpc, database
 | Package | Responsibility |
 |---|---|
 | `packages/domain` | Pure shared vocabulary — branded domain types with no dependencies. |
-| `packages/auth-better` | Better Auth adapter for identity and Organization access. |
+| `packages/auth-better` | Better Auth adapter for identity and Organization authorization. |
 | `packages/core` | Application services and the ports they depend on. |
 | `packages/database` | PostgreSQL lifecycle and adapters implementing core ports. |
 | `packages/rpc` | Transport-independent RPC contracts; handlers live in `apps/server`. |

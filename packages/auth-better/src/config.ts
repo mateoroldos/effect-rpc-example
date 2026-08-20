@@ -6,11 +6,13 @@ import { betterAuth } from "better-auth";
 import { organization } from "better-auth/plugins";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
+import { accessControl, roles } from "./organization-access-control.ts";
+
 /** Schema-affecting Better Auth policy shared by generation and runtime. */
 export const schemaOptions = {
   advanced: { database: { generateId: "uuid" as const } },
   emailAndPassword: { enabled: true },
-  plugins: [organization()],
+  plugins: [organization({ ac: accessControl, roles })],
 };
 
 /** Better Auth settings supplied by the deployable composition root. */

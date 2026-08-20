@@ -82,8 +82,11 @@
       "version": "0.0.0",
       "dependencies": {
         "@better-auth/drizzle-adapter": "1.7.0-rc.5",
+        "@effect-template/core": "workspace:*",
+        "@effect-template/domain": "workspace:*",
         "better-auth": "1.7.0-rc.5",
         "drizzle-orm": "catalog:",
+        "effect": "catalog:",
       },
       "devDependencies": {
         "@types/bun": "catalog:",

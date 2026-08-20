@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { OrganizationId } from "@effect-template/domain/organization";
   import Plus from "phosphor-svelte/lib/Plus";
   import {
     Alert,
@@ -17,6 +18,7 @@
   import { Label } from "$lib/components/ui/label";
   import { createAgent, getAgents } from "$lib/remotes/agents.remote";
 
+  let { organizationId }: { organizationId: OrganizationId } = $props();
   let created = $state(false);
   let createError = $state<string | null>(null);
 </script>
@@ -41,7 +43,7 @@
             ? await form
                 .submit()
                 .updates(
-                  getAgents().withOverride((items) => [
+                  getAgents({ organizationId }).withOverride((items) => [
                     { _tag: "Creating", name },
                     ...items,
                   ]),
@@ -57,6 +59,9 @@
         }
       })}
     >
+      <input
+        {...createAgent.fields.organizationId.as("hidden", organizationId)}
+      >
       <div class="grid gap-2">
         <Label for="agent-name">Name</Label>
         <Input

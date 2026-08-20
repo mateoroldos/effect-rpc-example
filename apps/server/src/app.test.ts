@@ -3,14 +3,19 @@ import { assert, describe, it } from "@effect/vitest";
 import { AgentDirectory } from "@effect-template/core/agent-directory";
 import { AgentStore } from "@effect-template/core/agent-directory/store";
 import { AgentName } from "@effect-template/domain/agent";
+import { OrganizationId } from "@effect-template/domain/organization";
 import { AgentsRpc } from "@effect-template/rpc/agents";
 import { Crypto, Effect, Layer } from "effect";
 import { HttpClient, HttpClientRequest } from "effect/unstable/http";
 import { RpcClient, RpcSerialization } from "effect/unstable/rpc";
 
+import { AuthorizationRpc } from "./auth/authorization-rpc/index.ts";
 import { agentsHandlersLayer } from "./rpc/agents.ts";
 import { rpcServerLayer } from "./rpc/server.ts";
 
+const organizationId = OrganizationId.make(
+  "123e4567-e89b-42d3-a456-426614174001"
+);
 const cryptoLayer = Layer.succeed(
   Crypto.Crypto,
   Crypto.make({
@@ -24,7 +29,8 @@ const agentsRpcHandlersTestLayer = agentsHandlersLayer.pipe(
   Layer.provide(cryptoLayer)
 );
 const serverLayer = rpcServerLayer.pipe(
-  Layer.provide(agentsRpcHandlersTestLayer)
+  Layer.provide(agentsRpcHandlersTestLayer),
+  Layer.provide(AuthorizationRpc.layerAllowAll)
 );
 const clientProtocolLayer = RpcClient.layerProtocolHttp({
   transformClient: HttpClient.mapRequest(HttpClientRequest.appendUrl("/rpc")),
@@ -42,10 +48,11 @@ describe("server", () => {
         const client = yield* RpcClient.make(AgentsRpc.group);
         const created = yield* client["Agents.Create"]({
           name: AgentName.make("Ada"),
+          organizationId,
         });
 
         assert.deepEqual(
-          yield* client["Agents.Get"]({ id: created.id }),
+          yield* client["Agents.Get"]({ id: created.id, organizationId }),
           created
         );
       })

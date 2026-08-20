@@ -1,8 +1,11 @@
 import { assert, describe, it } from "@effect/vitest";
+import { AuthorizationBetterAuth } from "@effect-template/auth-better/authorization";
+import { BetterAuthInstance } from "@effect-template/auth-better/better-auth-instance";
 import { makeAuth } from "@effect-template/auth-better/config";
 // biome-ignore lint/performance/noNamespaceImport: Better Auth requires the complete generated schema module.
 import * as authSchema from "@effect-template/database/auth-schema";
 import { DatabasePostgres } from "@effect-template/database/postgres";
+import { OrganizationId } from "@effect-template/domain/organization";
 import { ConfigProvider, Effect, Layer, Redacted } from "effect";
 
 import { betterAuthDatabase, effectDatabaseLayer } from "../infra/database.ts";
@@ -10,7 +13,7 @@ import { PostgresPool } from "../infra/postgres-pool/index.ts";
 import { acquireDisposableDatabaseUrl } from "../test/disposable-postgres.ts";
 
 describe("Better Auth database integration", () => {
-  it.effect("persists auth data readable through Effect Drizzle", () =>
+  it.effect("persists auth data and authorizes Organization permissions", () =>
     Effect.scoped(
       Effect.gen(function* () {
         const databaseUrl = yield* acquireDisposableDatabaseUrl;
@@ -35,7 +38,39 @@ describe("Better Auth database integration", () => {
             secret: "integration-test-secret-at-least-32-characters",
           });
 
-          const signupResponse = yield* Effect.tryPromise(() =>
+          const ownerResponse = yield* Effect.tryPromise(() =>
+            auth.api.signUpEmail({
+              asResponse: true,
+              body: {
+                email: "owner@example.com",
+                name: "Owner",
+                password: "correct horse battery staple",
+              },
+            })
+          );
+          const ownerCookie = ownerResponse.headers
+            .get("set-cookie")
+            ?.split(";", 1)[0];
+          assert.ok(ownerCookie);
+          const ownerHeaders = new Headers({ cookie: ownerCookie });
+          const ownerSession = yield* Effect.tryPromise(() =>
+            auth.api.getSession({ headers: ownerHeaders })
+          );
+          assert.ok(ownerSession);
+
+          const persistedUsers = yield* effectDatabase
+            .select()
+            .from(authSchema.user);
+          assert.strictEqual(persistedUsers.length, 1);
+          assert.instanceOf(persistedUsers[0]?.createdAt, Date);
+
+          const organization = yield* Effect.tryPromise(() =>
+            auth.api.createOrganization({
+              body: { name: "Acme", slug: "acme" },
+              headers: ownerHeaders,
+            })
+          );
+          const memberResponse = yield* Effect.tryPromise(() =>
             auth.api.signUpEmail({
               asResponse: true,
               body: {
@@ -45,25 +80,67 @@ describe("Better Auth database integration", () => {
               },
             })
           );
-          const cookie = signupResponse.headers
+          const memberCookie = memberResponse.headers
             .get("set-cookie")
             ?.split(";", 1)[0];
-          if (!cookie) {
-            return yield* Effect.die(
-              new Error("signup response omitted Set-Cookie")
-            );
-          }
-
-          const session = yield* Effect.tryPromise(() =>
-            auth.api.getSession({ headers: new Headers({ cookie }) })
+          assert.ok(memberCookie);
+          const memberHeaders = new Headers({ cookie: memberCookie });
+          const memberSession = yield* Effect.tryPromise(() =>
+            auth.api.getSession({ headers: memberHeaders })
           );
-          assert.strictEqual(session?.user.email, "member@example.com");
+          assert.ok(memberSession);
+          yield* Effect.tryPromise(() =>
+            auth.api.addMember({
+              body: {
+                organizationId: organization.id,
+                role: "member",
+                userId: memberSession.user.id,
+              },
+              headers: ownerHeaders,
+            })
+          );
 
-          const persistedUsers = yield* effectDatabase
-            .select()
-            .from(authSchema.user);
-          assert.strictEqual(persistedUsers.length, 1);
-          assert.instanceOf(persistedUsers[0]?.createdAt, Date);
+          const organizationId = OrganizationId.make(organization.id);
+          const authorizationLayer =
+            AuthorizationBetterAuth.layerWithoutDependencies.pipe(
+              Layer.provide(
+                BetterAuthInstance.layer(database, authSchema, {
+                  baseURL: "http://auth.integration.test",
+                  secret: "integration-test-secret-at-least-32-characters",
+                })
+              )
+            );
+
+          yield* Effect.gen(function* () {
+            const authorization = yield* AuthorizationBetterAuth.Service;
+
+            yield* authorization.require(
+              ownerHeaders,
+              organizationId,
+              "agent:create"
+            );
+            yield* authorization.require(
+              memberHeaders,
+              organizationId,
+              "agent:read"
+            );
+
+            const forbidden = yield* authorization
+              .require(memberHeaders, organizationId, "agent:create")
+              .pipe(Effect.flip);
+            assert.strictEqual(forbidden._tag, "Authorization.Forbidden");
+
+            const unauthenticated = yield* authorization
+              .require(new Headers(), organizationId, "agent:read")
+              .pipe(Effect.flip);
+            assert.strictEqual(
+              unauthenticated._tag,
+              "Authorization.Unauthenticated"
+            );
+          }).pipe(
+            // @effect-diagnostics-next-line strictEffectProvide:off
+            Effect.provide(authorizationLayer)
+          );
         }).pipe(
           // @effect-diagnostics-next-line strictEffectProvide:off
           Effect.provide(testDatabaseLayer)
