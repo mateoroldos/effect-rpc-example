@@ -62,6 +62,24 @@ export const organizationRoleAllows = (
 ): boolean =>
   permissionsByOrganizationRole[role].some((granted) => granted === permission);
 
+/** Organization Roles that each current Member Role may assign to an invitation. */
+export const assignableOrganizationRoles = {
+  admin: ["admin", "member"],
+  member: [],
+  owner: ["owner", "admin", "member"],
+} as const satisfies Readonly<
+  Record<OrganizationRole, readonly OrganizationRole[]>
+>;
+
+/** Returns whether a current Member Role may assign an invited Organization Role. */
+export const organizationRoleCanAssign = (
+  currentRole: OrganizationRole,
+  invitedRole: OrganizationRole
+): boolean =>
+  assignableOrganizationRoles[currentRole].some(
+    (assignable) => assignable === invitedRole
+  );
+
 /** Decodes UUID-v4 strings into branded Organization invitation identities. */
 export const OrganizationInvitationId = Schema.String.pipe(
   Schema.check(Schema.isUUID(4)),

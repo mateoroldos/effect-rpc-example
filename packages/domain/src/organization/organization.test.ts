@@ -2,10 +2,12 @@ import { assert, describe, it } from "@effect/vitest";
 import { Result, Schema } from "effect";
 
 import {
+  assignableOrganizationRoles,
   OrganizationId,
   OrganizationName,
   OrganizationSlug,
   organizationRoleAllows,
+  organizationRoleCanAssign,
   permissionsByOrganizationRole,
 } from "./organization.ts";
 
@@ -48,5 +50,20 @@ describe("Organization", () => {
     assert.isTrue(organizationRoleAllows("member", "member:read"));
     assert.isFalse(organizationRoleAllows("member", "agent:create"));
     assert.isFalse(organizationRoleAllows("member", "member:invite"));
+  });
+
+  it("limits assignable Roles by the current Member Role", () => {
+    assert.deepStrictEqual(assignableOrganizationRoles.owner, [
+      "owner",
+      "admin",
+      "member",
+    ]);
+    assert.deepStrictEqual(assignableOrganizationRoles.admin, [
+      "admin",
+      "member",
+    ]);
+    assert.isTrue(organizationRoleCanAssign("admin", "member"));
+    assert.isFalse(organizationRoleCanAssign("admin", "owner"));
+    assert.isFalse(organizationRoleCanAssign("member", "member"));
   });
 });
