@@ -1,9 +1,11 @@
 import {
   Organization,
+  OrganizationId,
   OrganizationName,
   OrganizationSlug,
 } from "@effect-template/domain/organization";
 import { error } from "@sveltejs/kit";
+import { ORGANIZATION_ERROR_CODES } from "better-auth/client/plugins";
 import { Effect, Match, Option, Schema } from "effect";
 import { form, getRequestEvent, query, requested } from "$app/server";
 import { authClient } from "../auth-client.ts";
@@ -25,6 +27,16 @@ class Malformed extends Schema.TaggedErrorClass<Malformed>()(
   {}
 ) {}
 
+class Unauthenticated extends Schema.TaggedErrorClass<Unauthenticated>()(
+  "Organizations.Unauthenticated",
+  {}
+) {}
+
+class NotFound extends Schema.TaggedErrorClass<NotFound>()(
+  "Organizations.NotFound",
+  {}
+) {}
+
 const decodeOrganization = Schema.decodeUnknownOption(Organization);
 const decodeOrganizations = Schema.decodeUnknownOption(
   Schema.Array(Organization)
@@ -39,6 +51,31 @@ export const getOrganizations = query(() => {
     { signal: request.signal }
   );
 });
+
+/** Resolves a URL-scoped Organization visible to the current User. */
+export const getOrganization = query(
+  Schema.toStandardSchemaV1(Schema.Struct({ organizationId: OrganizationId })),
+  ({ organizationId }) => {
+    const { request } = getRequestEvent();
+    return run(
+      findOrganization(request.headers, organizationId),
+      Match.type<Unavailable | Malformed | Unauthenticated | NotFound>().pipe(
+        Match.tagsExhaustive({
+          "Organizations.Malformed": () => error(500),
+          "Organizations.NotFound": () => error(404, "Organization not found"),
+          "Organizations.Unauthenticated": () =>
+            error(401, "Sign in to continue."),
+          "Organizations.Unavailable": () =>
+            error(
+              503,
+              "The Organization could not be loaded. Try again later."
+            ),
+        })
+      ),
+      { signal: request.signal }
+    );
+  }
+);
 
 /** Creates an Organization owned by the current User. */
 export const createOrganizationForm = form(
@@ -73,6 +110,43 @@ const listOrganizations = Effect.fn("Organizations.list")(function* (
     return yield* new Malformed();
   }
   return organizations.value;
+});
+
+const findOrganization = Effect.fn("Organizations.get")(function* (
+  requestHeaders: Headers,
+  organizationId: typeof OrganizationId.Type
+) {
+  const headers = yield* forwardedHeaders(requestHeaders);
+  const { data, error: providerError } = yield* Effect.tryPromise({
+    catch: (cause) => new Unavailable({ cause }),
+    try: (signal) =>
+      authClient.organization.getOrganization({
+        fetchOptions: { headers, signal },
+        query: { organizationId },
+      }),
+  });
+  if (providerError) {
+    if (providerError.status === 401) {
+      return yield* new Unauthenticated();
+    }
+    if (
+      providerError.status === 403 ||
+      providerError.status === 404 ||
+      providerError.code ===
+        ORGANIZATION_ERROR_CODES.ORGANIZATION_NOT_FOUND.code
+    ) {
+      return yield* new NotFound();
+    }
+    return yield* new Unavailable({ cause: providerError });
+  }
+  if (data === null) {
+    return yield* new NotFound();
+  }
+  const organization = decodeOrganization(data);
+  if (Option.isNone(organization)) {
+    return yield* new Malformed();
+  }
+  return organization.value;
 });
 
 const createOrganization = Effect.fn("Organizations.create")(function* (
