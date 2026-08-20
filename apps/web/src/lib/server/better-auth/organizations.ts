@@ -9,6 +9,7 @@ import {
   OrganizationRole,
   type OrganizationSlug,
   organizationRoleAllows,
+  organizationRoleCanAssign,
 } from "@effect-template/domain/organization";
 import { ORGANIZATION_ERROR_CODES } from "better-auth/client/plugins";
 import { Effect, Option, Schema } from "effect";
@@ -53,6 +54,18 @@ export class NotFound extends Schema.TaggedErrorClass<NotFound>()(
 export class PermissionDenied extends Schema.TaggedErrorClass<PermissionDenied>()(
   "BetterAuthOrganizations.PermissionDenied",
   { permission: OrganizationPermission }
+) {}
+
+/** Indicates that an invitation conflicts with an existing Member or invitation. */
+export class InvitationConflict extends Schema.TaggedErrorClass<InvitationConflict>()(
+  "BetterAuthOrganizations.InvitationConflict",
+  { reason: Schema.Literals(["already-invited", "already-member"]) }
+) {}
+
+/** Indicates that the current Member cannot assign the requested Organization Role. */
+export class RoleAssignmentDenied extends Schema.TaggedErrorClass<RoleAssignmentDenied>()(
+  "BetterAuthOrganizations.RoleAssignmentDenied",
+  { role: OrganizationRole }
 ) {}
 
 const decodeOrganization = Schema.decodeUnknownOption(Organization);
@@ -212,6 +225,9 @@ export const inviteMember = Effect.fn("BetterAuthOrganizations.inviteMember")(
     if (!organizationRoleAllows(role, "member:invite")) {
       return yield* new PermissionDenied({ permission: "member:invite" });
     }
+    if (!organizationRoleCanAssign(role, input.role)) {
+      return yield* new RoleAssignmentDenied({ role: input.role });
+    }
     const { error } = yield* attempt("inviteMember", (signal) =>
       authClient.organization.inviteMember({
         ...input,
@@ -219,6 +235,34 @@ export const inviteMember = Effect.fn("BetterAuthOrganizations.inviteMember")(
       })
     );
     if (error) {
+      if (
+        error.code ===
+        ORGANIZATION_ERROR_CODES.USER_IS_ALREADY_INVITED_TO_THIS_ORGANIZATION
+          .code
+      ) {
+        return yield* new InvitationConflict({ reason: "already-invited" });
+      }
+      if (
+        error.code ===
+        ORGANIZATION_ERROR_CODES.USER_IS_ALREADY_A_MEMBER_OF_THIS_ORGANIZATION
+          .code
+      ) {
+        return yield* new InvitationConflict({ reason: "already-member" });
+      }
+      if (
+        error.code ===
+        ORGANIZATION_ERROR_CODES
+          .YOU_ARE_NOT_ALLOWED_TO_INVITE_USERS_TO_THIS_ORGANIZATION.code
+      ) {
+        return yield* new PermissionDenied({ permission: "member:invite" });
+      }
+      if (
+        error.code ===
+        ORGANIZATION_ERROR_CODES
+          .YOU_ARE_NOT_ALLOWED_TO_INVITE_USER_WITH_THIS_ROLE.code
+      ) {
+        return yield* new RoleAssignmentDenied({ role: input.role });
+      }
       return yield* new Unavailable({
         cause: error,
         operation: "inviteMember",

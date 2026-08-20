@@ -12,12 +12,14 @@ import {
   acceptInvitation,
   create,
   find,
+  type InvitationConflict,
   inviteMember,
   list,
   listPeople,
   type Malformed,
   type NotFound,
   type PermissionDenied,
+  type RoleAssignmentDenied,
   type Unauthenticated,
   type Unavailable,
 } from "../server/better-auth/organizations.ts";
@@ -88,14 +90,29 @@ export const inviteMemberForm = form(
     await run(
       inviteMember(request.headers, input),
       Match.type<
-        Unavailable | Malformed | Unauthenticated | NotFound | PermissionDenied
+        | Unavailable
+        | Malformed
+        | Unauthenticated
+        | NotFound
+        | PermissionDenied
+        | InvitationConflict
+        | RoleAssignmentDenied
       >().pipe(
         Match.tagsExhaustive({
+          "BetterAuthOrganizations.InvitationConflict": ({ reason }) =>
+            error(
+              409,
+              reason === "already-member"
+                ? "This email already belongs to an Organization Member."
+                : "This email already has a pending invitation."
+            ),
           "BetterAuthOrganizations.Malformed": () => error(500),
           "BetterAuthOrganizations.NotFound": () =>
             error(404, "Organization not found"),
           "BetterAuthOrganizations.PermissionDenied": () =>
             error(403, "You do not have permission to invite Members."),
+          "BetterAuthOrganizations.RoleAssignmentDenied": () =>
+            error(403, "You cannot assign the selected Organization Role."),
           "BetterAuthOrganizations.Unauthenticated": () =>
             error(401, "Sign in to continue."),
           "BetterAuthOrganizations.Unavailable": () =>

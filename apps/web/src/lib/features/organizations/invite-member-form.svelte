@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { OrganizationRole } from "@effect-template/domain/organization";
+  import { assignableOrganizationRoles } from "@effect-template/domain/organization";
+  import { isHttpError } from "@sveltejs/kit";
   import PaperPlaneTilt from "phosphor-svelte/lib/PaperPlaneTilt";
   import { Button } from "#lib/components/ui/button/index.ts";
   import {
@@ -15,9 +16,9 @@
   import { inviteMemberForm } from "#lib/remotes/organizations.remote.ts";
 
   const active = getOrganizationContext();
-  const roles = OrganizationRole.literals;
+  const roles = $derived(assignableOrganizationRoles[active.role]);
   let sent = $state(false);
-  let failed = $state(false);
+  let failed = $state<string | null>(null);
 </script>
 
 <Card class="lg:sticky lg:top-8">
@@ -32,14 +33,16 @@
       class="grid gap-4"
       {...inviteMemberForm.enhance(async (form) => {
         sent = false;
-        failed = false;
+        failed = null;
         try {
           if (await form.submit()) {
             form.element.reset();
             sent = true;
           }
-        } catch {
-          failed = true;
+        } catch (cause) {
+          failed = isHttpError(cause)
+            ? cause.body.message
+            : "The invitation could not be sent. Try again later.";
         }
       })}
     >
@@ -83,7 +86,7 @@
 
       {#if failed}
         <p aria-live="polite" class="text-sm text-destructive">
-          The invitation could not be sent. Check your permission and try again.
+          {failed}
         </p>
       {:else if sent}
         <p aria-live="polite" class="text-sm text-emerald-700">
