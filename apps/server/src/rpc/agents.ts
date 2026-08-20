@@ -28,8 +28,10 @@ export const agentsHandlersLayer = group.toLayer(
             "AgentDirectory.IdGenerationError": () =>
               new AgentsRpc.Unavailable(),
             "AgentStore.PersistenceError": () => new AgentsRpc.Unavailable(),
-            "Authorization.NotMember": () => new AgentsRpc.Forbidden(),
-            "Authorization.PermissionDenied": () => new AgentsRpc.Forbidden(),
+            "Authorization.NotMember": () =>
+              new AgentsRpc.OrganizationNotFound(),
+            "Authorization.PermissionDenied": ({ permission }) =>
+              new AgentsRpc.PermissionDenied({ permission }),
             "Authorization.Unauthenticated": () =>
               new AgentsRpc.Unauthenticated(),
             "Authorization.Unavailable": () => new AgentsRpc.Unavailable(),
@@ -45,8 +47,10 @@ export const agentsHandlersLayer = group.toLayer(
           Effect.catchTags({
             "AgentDirectory.NotFound": () => new AgentsRpc.NotFound({ id }),
             "AgentStore.PersistenceError": () => new AgentsRpc.Unavailable(),
-            "Authorization.NotMember": () => new AgentsRpc.Forbidden(),
-            "Authorization.PermissionDenied": () => new AgentsRpc.Forbidden(),
+            "Authorization.NotMember": () =>
+              new AgentsRpc.OrganizationNotFound(),
+            "Authorization.PermissionDenied": ({ permission }) =>
+              new AgentsRpc.PermissionDenied({ permission }),
             "Authorization.Unauthenticated": () =>
               new AgentsRpc.Unauthenticated(),
             "Authorization.Unavailable": () => new AgentsRpc.Unavailable(),
@@ -62,8 +66,10 @@ export const agentsHandlersLayer = group.toLayer(
           ),
           Effect.catchTags({
             "AgentStore.PersistenceError": () => new AgentsRpc.Unavailable(),
-            "Authorization.NotMember": () => new AgentsRpc.Forbidden(),
-            "Authorization.PermissionDenied": () => new AgentsRpc.Forbidden(),
+            "Authorization.NotMember": () =>
+              new AgentsRpc.OrganizationNotFound(),
+            "Authorization.PermissionDenied": ({ permission }) =>
+              new AgentsRpc.PermissionDenied({ permission }),
             "Authorization.Unauthenticated": () =>
               new AgentsRpc.Unauthenticated(),
             "Authorization.Unavailable": () => new AgentsRpc.Unavailable(),

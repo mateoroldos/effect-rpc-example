@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest";
 import { AgentDirectory } from "@effect-template/core/agent-directory";
 import { AgentStore } from "@effect-template/core/agent-directory/store";
+import { Authorization } from "@effect-template/core/authorization";
 import { AgentId, AgentName } from "@effect-template/domain/agent";
 import { OrganizationId } from "@effect-template/domain/organization";
 import { AgentsRpc } from "@effect-template/rpc/agents";
@@ -49,6 +50,44 @@ const unavailableLayer = agentsHandlersLayer.pipe(
 const unauthenticatedLayer = agentsHandlersLayer.pipe(
   Layer.provide(availableDirectoryLayer),
   Layer.merge(AuthorizationRpc.layerUnauthenticated)
+);
+const authorizationRpcLayer = (authorization: Authorization.Interface) =>
+  Layer.succeed(
+    AuthorizationRpc.Middleware,
+    AuthorizationRpc.Middleware.of((effect) =>
+      Effect.provideService(
+        effect,
+        Authorization.Service,
+        Authorization.Service.of(authorization)
+      )
+    )
+  );
+const notMemberLayer = agentsHandlersLayer.pipe(
+  Layer.provide(availableDirectoryLayer),
+  Layer.merge(
+    authorizationRpcLayer({
+      require: (requestedOrganizationId) =>
+        Effect.fail(
+          new Authorization.NotMember({
+            organizationId: requestedOrganizationId,
+          })
+        ),
+    })
+  )
+);
+const permissionDeniedLayer = agentsHandlersLayer.pipe(
+  Layer.provide(availableDirectoryLayer),
+  Layer.merge(
+    authorizationRpcLayer({
+      require: (requestedOrganizationId, permission) =>
+        Effect.fail(
+          new Authorization.PermissionDenied({
+            organizationId: requestedOrganizationId,
+            permission,
+          })
+        ),
+    })
+  )
 );
 
 const unknownId = AgentId.make("123e4567-e89b-42d3-a456-426614174002");
@@ -101,6 +140,38 @@ describe("agents RPC", () => {
             Effect.flip
           );
           assert.deepEqual(error, new AgentsRpc.Unauthenticated());
+        })
+      )
+    );
+  });
+
+  it.layer(notMemberLayer)("inaccessible Organization", (test) => {
+    test.effect("conceals membership as OrganizationNotFound", () =>
+      Effect.scoped(
+        Effect.gen(function* () {
+          const client = yield* RpcTest.makeClient(agentsGroup);
+          const error = yield* client["Agents.List"]({ organizationId }).pipe(
+            Effect.flip
+          );
+          assert.deepEqual(error, new AgentsRpc.OrganizationNotFound());
+        })
+      )
+    );
+  });
+
+  it.layer(permissionDeniedLayer)("insufficient permission", (test) => {
+    test.effect("preserves the denied Organization Permission", () =>
+      Effect.scoped(
+        Effect.gen(function* () {
+          const client = yield* RpcTest.makeClient(agentsGroup);
+          const error = yield* client["Agents.Create"]({
+            name: AgentName.make("Ada"),
+            organizationId,
+          }).pipe(Effect.flip);
+          assert.deepEqual(
+            error,
+            new AgentsRpc.PermissionDenied({ permission: "agent:create" })
+          );
         })
       )
     );

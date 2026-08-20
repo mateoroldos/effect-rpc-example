@@ -1,5 +1,8 @@
 import { Agent, AgentId, AgentName } from "@effect-template/domain/agent";
-import { OrganizationId } from "@effect-template/domain/organization";
+import {
+  OrganizationId,
+  OrganizationPermission,
+} from "@effect-template/domain/organization";
 import { Schema } from "effect";
 import { Rpc, RpcGroup } from "effect/unstable/rpc";
 
@@ -21,10 +24,16 @@ export class NotFound extends Schema.TaggedErrorClass<NotFound>()(
   { id: AgentId }
 ) {}
 
-/** Indicates that the authenticated User cannot access the Organization. */
-export class Forbidden extends Schema.TaggedErrorClass<Forbidden>()(
-  "AgentsRpc.Forbidden",
+/** Indicates that the requested Organization is not visible to the Principal. */
+export class OrganizationNotFound extends Schema.TaggedErrorClass<OrganizationNotFound>()(
+  "AgentsRpc.OrganizationNotFound",
   {}
+) {}
+
+/** Indicates that the current Member lacks an Organization Permission. */
+export class PermissionDenied extends Schema.TaggedErrorClass<PermissionDenied>()(
+  "AgentsRpc.PermissionDenied",
+  { permission: OrganizationPermission }
 ) {}
 
 /** The wire input for creating an Agent. */
@@ -32,6 +41,7 @@ export const CreateAgentInput = Schema.Struct({
   name: AgentName,
   organizationId: OrganizationId,
 });
+/** Parsed wire input for creating an Agent. */
 export type CreateAgentInput = typeof CreateAgentInput.Type;
 
 /** The wire input for retrieving an Agent. */
@@ -39,28 +49,37 @@ export const GetAgentInput = Schema.Struct({
   id: AgentId,
   organizationId: OrganizationId,
 });
+/** Parsed wire input for retrieving an Agent. */
 export type GetAgentInput = typeof GetAgentInput.Type;
 
 /** The wire input selecting an Organization's Agents. */
 export const ListAgentsInput = Schema.Struct({
   organizationId: OrganizationId,
 });
+/** Parsed wire input selecting an Organization's Agents. */
 export type ListAgentsInput = typeof ListAgentsInput.Type;
+
+const authorizationErrors = [
+  OrganizationNotFound,
+  PermissionDenied,
+  Unavailable,
+  Unauthenticated,
+] as const;
 
 /** Defines authenticated, Organization-scoped Agent operations. */
 export const group = RpcGroup.make(
   Rpc.make("Agents.Create", {
-    error: Schema.Union([Forbidden, Unavailable, Unauthenticated]),
+    error: Schema.Union(authorizationErrors),
     payload: CreateAgentInput,
     success: Agent,
   }),
   Rpc.make("Agents.Get", {
-    error: Schema.Union([Forbidden, NotFound, Unavailable, Unauthenticated]),
+    error: Schema.Union([...authorizationErrors, NotFound]),
     payload: GetAgentInput,
     success: Agent,
   }),
   Rpc.make("Agents.List", {
-    error: Schema.Union([Forbidden, Unavailable, Unauthenticated]),
+    error: Schema.Union(authorizationErrors),
     payload: ListAgentsInput,
     success: Schema.Array(Agent),
   })
