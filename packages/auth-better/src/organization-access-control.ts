@@ -1,7 +1,7 @@
-import { Authorization } from "@effect-template/core/authorization";
-import type {
-  OrganizationPermission,
-  OrganizationRole,
+import {
+  type OrganizationPermission,
+  type OrganizationRole,
+  permissionsByOrganizationRole,
 } from "@effect-template/domain/organization";
 import { createAccessControl } from "better-auth/plugins";
 import {
@@ -21,6 +21,8 @@ export const accessControl = createAccessControl(statements);
 export const betterAuthPermissions = {
   "agent:create": { agent: ["create"] },
   "agent:read": { agent: ["read"] },
+  "member:invite": { agent: [] },
+  "member:read": { agent: [] },
 } satisfies Record<
   OrganizationPermission,
   { readonly agent: Array<"create" | "read"> }
@@ -44,7 +46,7 @@ export const roles = {
 
 function betterAuthStatementsFor(role: OrganizationRole) {
   return {
-    agent: Authorization.permissionsByOrganizationRole[role].flatMap(
+    agent: permissionsByOrganizationRole[role].flatMap(
       (permission) => betterAuthPermissions[permission].agent
     ),
   };

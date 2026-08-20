@@ -5,6 +5,8 @@ import {
   OrganizationId,
   OrganizationName,
   OrganizationSlug,
+  organizationRoleAllows,
+  permissionsByOrganizationRole,
 } from "./organization.ts";
 
 const parseOrganizationId = Schema.decodeUnknownResult(OrganizationId);
@@ -33,4 +35,18 @@ describe("Organization", () => {
       assert.isTrue(Result.isFailure(parseOrganizationSlug(input)));
     }
   );
+
+  it("grants every administrative Organization permission", () => {
+    assert.deepStrictEqual(
+      permissionsByOrganizationRole.admin,
+      permissionsByOrganizationRole.owner
+    );
+  });
+
+  it("limits Members to read permissions", () => {
+    assert.isTrue(organizationRoleAllows("member", "agent:read"));
+    assert.isTrue(organizationRoleAllows("member", "member:read"));
+    assert.isFalse(organizationRoleAllows("member", "agent:create"));
+    assert.isFalse(organizationRoleAllows("member", "member:invite"));
+  });
 });

@@ -1,7 +1,6 @@
 import {
   OrganizationId,
   type OrganizationPermission,
-  type OrganizationRole,
 } from "@effect-template/domain/organization";
 import { Context, Effect, Layer, Schema } from "effect";
 
@@ -39,15 +38,6 @@ export class Unavailable extends Schema.TaggedErrorClass<Unavailable>()(
   "Authorization.Unavailable",
   { cause: Schema.Defect() }
 ) {}
-
-/** Application permissions granted by each Organization role. */
-export const permissionsByOrganizationRole = {
-  admin: ["agent:create", "agent:read"],
-  member: ["agent:read"],
-  owner: ["agent:create", "agent:read"],
-} as const satisfies Readonly<
-  Record<OrganizationRole, readonly OrganizationPermission[]>
->;
 
 /** Authorization implementation that permits every permission in focused tests. */
 export const allowAll = Service.of({ require: () => Effect.void });

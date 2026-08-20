@@ -39,10 +39,28 @@ export type OrganizationRole = typeof OrganizationRole.Type;
 export const OrganizationPermission = Schema.Literals([
   "agent:create",
   "agent:read",
+  "member:invite",
+  "member:read",
 ]);
 
 /** An application capability granted through an Organization role. */
 export type OrganizationPermission = typeof OrganizationPermission.Type;
+
+/** Application permissions granted by each Organization Role. */
+export const permissionsByOrganizationRole = {
+  admin: ["agent:create", "agent:read", "member:invite", "member:read"],
+  member: ["agent:read", "member:read"],
+  owner: ["agent:create", "agent:read", "member:invite", "member:read"],
+} as const satisfies Readonly<
+  Record<OrganizationRole, readonly OrganizationPermission[]>
+>;
+
+/** Returns whether an Organization Role grants an Organization Permission. */
+export const organizationRoleAllows = (
+  role: OrganizationRole,
+  permission: OrganizationPermission
+): boolean =>
+  permissionsByOrganizationRole[role].some((granted) => granted === permission);
 
 /** Decodes UUID-v4 strings into branded Organization invitation identities. */
 export const OrganizationInvitationId = Schema.String.pipe(
