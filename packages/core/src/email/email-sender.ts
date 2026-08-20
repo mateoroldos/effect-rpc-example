@@ -52,7 +52,11 @@ export const layerLog = Layer.succeed(
   Service.of({
     send: Effect.fn("EmailSenderLog.send")(function* (message: EmailMessage) {
       yield* Effect.log("EmailSender (log): message not sent").pipe(
-        Effect.annotateLogs({ subject: message.subject, to: message.to })
+        Effect.annotateLogs({
+          subject: message.subject,
+          text: message.text,
+          to: message.to,
+        })
       );
     }),
   })

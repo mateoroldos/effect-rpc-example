@@ -21,6 +21,8 @@ import { authLayer } from "./layer.ts";
 
 const OrganizationResponse = Schema.Struct({ id: OrganizationId });
 const InvitationResponse = Schema.Struct({ id: Schema.String });
+const apiBaseUrl = new URL("https://api.example.com");
+const webBaseUrl = new URL("https://app.example.com");
 
 it.effect("public authentication and Organization lifecycle", () =>
   Effect.scoped(
@@ -36,15 +38,18 @@ it.effect("public authentication and Organization lifecycle", () =>
             }),
         })
       );
-      const serverLayer = httpServerLayer.pipe(
+      const serverLayer = httpServerLayer("http://localhost:5173").pipe(
         Layer.provide(agentsHandlersLayerPostgres),
         Layer.provide(
           authLayer({
-            apiBaseUrl: new URL("http://localhost"),
+            origins: {
+              api: apiBaseUrl,
+              cookieDomain: "example.com",
+              web: webBaseUrl,
+            },
             secret: Redacted.make(
               "integration-test-secret-at-least-32-characters"
             ),
-            webBaseUrl: new URL("http://localhost:5173"),
           })
         ),
         Layer.provideMerge(effectDatabaseLayer),
@@ -61,13 +66,20 @@ it.effect("public authentication and Organization lifecycle", () =>
         const http = yield* HttpClient.HttpClient;
 
         const signup = yield* authRequest(http, "/sign-up/email", {
+          callbackURL: `${webBaseUrl.origin}/login?verified=true`,
           email: "ada@example.com",
           name: "Ada",
           password: "correct-horse-battery-staple",
         });
         assert.strictEqual(signup.status, 200);
+        assert.isUndefined(signup.headers["set-cookie"]);
         assert.lengthOf(sent, 1);
-        const ownerCookie = requireCookie(signup);
+        yield* verifyEmail(http, sent[0]);
+        const ownerCookie = yield* signIn(
+          http,
+          "ada@example.com",
+          "correct-horse-battery-staple"
+        );
 
         const session = yield* authRequest(
           http,
@@ -108,11 +120,19 @@ it.effect("public authentication and Organization lifecycle", () =>
           );
 
         const graceSignup = yield* authRequest(http, "/sign-up/email", {
+          callbackURL: `${webBaseUrl.origin}/login?verified=true`,
           email: "grace@example.com",
           name: "Grace",
           password: "correct-horse-battery-staple",
         });
-        const graceCookie = requireCookie(graceSignup);
+        assert.strictEqual(graceSignup.status, 200);
+        assert.lengthOf(sent, 3);
+        yield* verifyEmail(http, sent[2]);
+        const graceCookie = yield* signIn(
+          http,
+          "grace@example.com",
+          "correct-horse-battery-staple"
+        );
         const accepted = yield* authRequest(
           http,
           "/organization/accept-invitation",
@@ -152,7 +172,7 @@ const authRequest = (
   method: "GET" | "POST" = "POST"
 ) => {
   const request = HttpClientRequest.make(method)(`/api/auth${path}`).pipe(
-    HttpClientRequest.setHeader("origin", "http://localhost:5173")
+    HttpClientRequest.setHeader("origin", webBaseUrl.origin)
   );
   const withCookie =
     cookie === undefined
@@ -165,8 +185,35 @@ const authRequest = (
   return http.execute(withBody);
 };
 
+const verifyEmail = (
+  http: HttpClient.HttpClient,
+  message: EmailSender.EmailMessage | undefined
+) =>
+  Effect.gen(function* () {
+    assert.isDefined(message);
+    const verificationUrl = message.text.split("\n\n").at(-1);
+    assert.isDefined(verificationUrl);
+    const url = new URL(verificationUrl);
+    yield* authRequest(
+      http,
+      `${url.pathname.replace("/api/auth", "")}${url.search}`,
+      undefined,
+      undefined,
+      "GET"
+    ).pipe(Effect.catch(() => Effect.void));
+  });
+
+const signIn = (http: HttpClient.HttpClient, email: string, password: string) =>
+  authRequest(http, "/sign-in/email", { email, password }).pipe(
+    Effect.map(requireCookie)
+  );
+
 const requireCookie = (response: HttpClientResponse.HttpClientResponse) => {
-  const cookie = response.headers["set-cookie"]?.split(";", 1)[0];
+  const setCookie = response.headers["set-cookie"];
+  assert.isDefined(setCookie);
+  assert.include(setCookie, "Domain=example.com");
+  assert.include(setCookie, "Secure");
+  const [cookie] = setCookie.split(";", 1);
   assert.isDefined(cookie);
   return cookie;
 };

@@ -8,10 +8,13 @@ import { Effect, Layer, type Redacted } from "effect";
 import { betterAuthDatabase } from "../infra/database.ts";
 import { AuthorizationRpc } from "./authorization-rpc/index.ts";
 
-export interface Options {
-  readonly apiBaseUrl: URL;
+interface Options {
+  readonly origins: {
+    readonly api: URL;
+    readonly cookieDomain: string;
+    readonly web: URL;
+  };
   readonly secret: Redacted.Redacted<string>;
-  readonly webBaseUrl: URL;
 }
 
 const betterAuthInstanceLayer = (options: Options) =>
@@ -19,15 +22,16 @@ const betterAuthInstanceLayer = (options: Options) =>
     Effect.gen(function* makeBetterAuthInstanceLayer() {
       const database = yield* betterAuthDatabase;
       return BetterAuthInstance.layerWithoutDependencies({
-        baseUrl: options.apiBaseUrl,
+        baseUrl: options.origins.api,
+        cookieDomain: options.origins.cookieDomain,
         database,
         schema: authSchema,
         secret: options.secret,
-        trustedOrigins: [options.webBaseUrl.origin],
+        webBaseUrl: options.origins.web,
       }).pipe(
         Layer.provide(
           BetterAuthEmail.layerWithoutDependencies({
-            webBaseUrl: options.webBaseUrl,
+            webBaseUrl: options.origins.web,
           })
         )
       );

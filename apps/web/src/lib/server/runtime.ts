@@ -1,9 +1,8 @@
 import { NodeHttpClient } from "@effect/platform-node";
 import { makeServerLayer } from "@effect-template/observability";
-import { Effect, Layer, ManagedRuntime, type Scope } from "effect";
+import { Effect, Layer, ManagedRuntime, Result, type Scope } from "effect";
 import { RpcClient, RpcSerialization } from "effect/unstable/rpc";
 import {
-  API_URL,
   APP_ENV,
   DEV_INSTANCE,
   LOG_LEVEL,
@@ -11,19 +10,15 @@ import {
   OTEL_EXPORTER_OTLP_HEADERS_JSON,
   OTEL_SERVICE_VERSION,
 } from "$app/env/private";
+import { apiOrigin } from "../public-origins.ts";
 import { AppRpcClient } from "./rpc/client.ts";
 
 const serviceName = DEV_INSTANCE
   ? `${DEV_INSTANCE}-web`
   : "effect-template-web";
 
-// Dev: the API is this workspace's portless URL (mirrors the server's --name).
-// Prod sets API_URL explicitly. Assumes default portless (https/443).
-const apiUrl =
-  API_URL ?? `https://${DEV_INSTANCE}.api.effect-template.localhost`;
-
 const protocolLayer = RpcClient.layerProtocolHttp({
-  url: `${apiUrl}/rpc`,
+  url: `${apiOrigin}/rpc`,
 }).pipe(
   Layer.provide(NodeHttpClient.layerUndici),
   Layer.provide(RpcSerialization.layerNdjson)
@@ -44,11 +39,19 @@ const runtime = ManagedRuntime.make(
   Layer.merge(rpcClientLayer, telemetryLayer)
 );
 
-/** Runs a request-scoped Effect using the web application's shared runtime. */
-export const run = <A, E>(
+/**
+ * Runs a request-scoped Effect on the shared runtime and projects its typed
+ * failures at the SvelteKit boundary. Defects and interruptions stay rejected.
+ */
+export const run = async <A, E>(
   effect: Effect.Effect<A, E, AppRpcClient | Scope.Scope>,
+  onFailure: (error: NoInfer<E>) => never,
   options?: { readonly signal?: AbortSignal }
-) => runtime.runPromise(Effect.scoped(effect), options);
+): Promise<A> =>
+  Result.match(
+    await runtime.runPromise(Effect.result(Effect.scoped(effect)), options),
+    { onFailure, onSuccess: (value) => value }
+  );
 
 /** Releases resources owned by the web application's shared runtime. */
 export const disposeRuntime = () => runtime.dispose();

@@ -7,7 +7,7 @@
   "scripts": {
     "check-types": "tsc",
     "db:migrate": "bun run src/migrate.ts",
-    "dev": "portless run --name \"${DEV_INSTANCE:?run 'bun run dev' from the repo root}.api.effect-template\"",
+    "dev": "portless run --name \"api.${DEV_INSTANCE:?run 'bun run dev' from the repo root}.effect-template\"",
     "dev:app": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts"
   },

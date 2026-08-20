@@ -14,13 +14,12 @@ import { agentsHandlersLayerPostgres } from "./rpc/agents.ts";
 /** Application Layer launched by the Bun server process. */
 export const appLayer = Layer.unwrap(
   Effect.map(loadServerConfiguration, (configuration) =>
-    httpServerLayer.pipe(
+    httpServerLayer(configuration.publicOrigins.web.origin).pipe(
       Layer.provide(agentsHandlersLayerPostgres),
       Layer.provide(
         authLayer({
-          apiBaseUrl: configuration.apiBaseUrl,
+          origins: configuration.publicOrigins,
           secret: configuration.authSecret,
-          webBaseUrl: configuration.webBaseUrl,
         })
       ),
       Layer.provide(effectDatabaseLayer),

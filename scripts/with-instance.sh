@@ -5,4 +5,5 @@
 # so it is safe as a DNS label. Override by exporting DEV_INSTANCE.
 raw="${DEV_INSTANCE:-$(basename "$PWD")}"
 export DEV_INSTANCE="$(printf '%s' "$raw" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9-' '-' | sed 's/--*/-/g; s/^-//; s/-$//')"
+export APP_DOMAIN="${APP_DOMAIN:-${DEV_INSTANCE}.effect-template.localhost}"
 exec "$@"

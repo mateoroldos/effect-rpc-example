@@ -35,7 +35,8 @@ const authHttpLayer = Layer.succeed(
     handle: () => Effect.succeed(new Response(null, { status: 204 })),
   })
 );
-const serverLayer = httpServerLayer.pipe(
+const webOrigin = "https://app.example.com";
+const serverLayer = httpServerLayer(webOrigin).pipe(
   Layer.provide(agentsRpcHandlersTestLayer),
   Layer.provide(AuthorizationRpc.layerAllowAll),
   Layer.provide(authHttpLayer)
@@ -71,6 +72,29 @@ describe("server", () => {
         const http = yield* HttpClient.HttpClient;
         const response = yield* http.get("/api/auth/session");
         assert.strictEqual(response.status, 204);
+      })
+    );
+
+    test.effect("allows credentialed requests from the web origin", () =>
+      Effect.gen(function* () {
+        const http = yield* HttpClient.HttpClient;
+        const response = yield* http.execute(
+          HttpClientRequest.options("/api/auth/sign-in/email").pipe(
+            HttpClientRequest.setHeaders({
+              "access-control-request-method": "POST",
+              origin: webOrigin,
+            })
+          )
+        );
+        assert.strictEqual(response.status, 204);
+        assert.strictEqual(
+          response.headers["access-control-allow-origin"],
+          webOrigin
+        );
+        assert.strictEqual(
+          response.headers["access-control-allow-credentials"],
+          "true"
+        );
       })
     );
 
