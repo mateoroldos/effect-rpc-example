@@ -1,15 +1,25 @@
 import {
-  Organization,
   OrganizationId,
+  OrganizationInvitationId,
   OrganizationName,
+  OrganizationRole,
   OrganizationSlug,
 } from "@effect-template/domain/organization";
 import { error } from "@sveltejs/kit";
-import { ORGANIZATION_ERROR_CODES } from "better-auth/client/plugins";
-import { Effect, Match, Option, Schema } from "effect";
+import { Match, Schema } from "effect";
 import { form, getRequestEvent, query, requested } from "$app/server";
-import { authClient } from "../auth-client.ts";
-import { forwardedHeaders } from "../server/better-auth/forwarded-headers.ts";
+import {
+  acceptInvitation,
+  create,
+  find,
+  inviteMember,
+  list,
+  listPeople,
+  type Malformed,
+  type NotFound,
+  type Unauthenticated,
+  type Unavailable,
+} from "../server/better-auth/organizations.ts";
 import { run } from "../server/runtime.ts";
 
 const CreateOrganizationInput = Schema.Struct({
@@ -17,36 +27,23 @@ const CreateOrganizationInput = Schema.Struct({
   slug: OrganizationSlug,
 });
 
-class Unavailable extends Schema.TaggedErrorClass<Unavailable>()(
-  "Organizations.Unavailable",
-  { cause: Schema.Defect() }
-) {}
+const InviteMemberInput = Schema.Struct({
+  email: Schema.String.pipe(
+    Schema.check(Schema.isPattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/))
+  ),
+  organizationId: OrganizationId,
+  role: OrganizationRole,
+});
 
-class Malformed extends Schema.TaggedErrorClass<Malformed>()(
-  "Organizations.Malformed",
-  {}
-) {}
-
-class Unauthenticated extends Schema.TaggedErrorClass<Unauthenticated>()(
-  "Organizations.Unauthenticated",
-  {}
-) {}
-
-class NotFound extends Schema.TaggedErrorClass<NotFound>()(
-  "Organizations.NotFound",
-  {}
-) {}
-
-const decodeOrganization = Schema.decodeUnknownOption(Organization);
-const decodeOrganizations = Schema.decodeUnknownOption(
-  Schema.Array(Organization)
-);
+const AcceptInvitationInput = Schema.Struct({
+  invitationId: OrganizationInvitationId,
+});
 
 /** Lists the Organizations visible to the current User. */
 export const getOrganizations = query(() => {
   const { request } = getRequestEvent();
   return run(
-    listOrganizations(request.headers),
+    list(request.headers),
     organizationFailure("Organizations could not be loaded. Try again later."),
     { signal: request.signal }
   );
@@ -58,19 +55,64 @@ export const getOrganization = query(
   ({ organizationId }) => {
     const { request } = getRequestEvent();
     return run(
-      findOrganization(request.headers, organizationId),
+      find(request.headers, organizationId),
       Match.type<Unavailable | Malformed | Unauthenticated | NotFound>().pipe(
         Match.tagsExhaustive({
-          "Organizations.Malformed": () => error(500),
-          "Organizations.NotFound": () => error(404, "Organization not found"),
-          "Organizations.Unauthenticated": () =>
+          "BetterAuthOrganizations.Malformed": () => error(500),
+          "BetterAuthOrganizations.NotFound": () =>
+            error(404, "Organization not found"),
+          "BetterAuthOrganizations.Unauthenticated": () =>
             error(401, "Sign in to continue."),
-          "Organizations.Unavailable": () =>
+          "BetterAuthOrganizations.Unavailable": () =>
             error(
               503,
               "The Organization could not be loaded. Try again later."
             ),
         })
+      ),
+      { signal: request.signal }
+    );
+  }
+);
+
+/** Lists Members and invitations for a URL-scoped Organization. */
+export const getOrganizationPeople = query(
+  Schema.toStandardSchemaV1(Schema.Struct({ organizationId: OrganizationId })),
+  ({ organizationId }) => {
+    const { request } = getRequestEvent();
+    return run(
+      listPeople(request.headers, organizationId),
+      organizationFailure(
+        "Organization Members could not be loaded. Try again later."
+      ),
+      { signal: request.signal }
+    );
+  }
+);
+
+/** Invites a User to become an Organization Member. */
+export const inviteMemberForm = form(
+  Schema.toStandardSchemaV1(InviteMemberInput),
+  async (input) => {
+    const { request } = getRequestEvent();
+    await run(
+      inviteMember(request.headers, input),
+      organizationFailure("The invitation could not be sent. Try again later."),
+      { signal: request.signal }
+    );
+    await requested(getOrganizationPeople, 1).refreshAll();
+  }
+);
+
+/** Accepts an Organization invitation for the current User. */
+export const acceptInvitationForm = form(
+  Schema.toStandardSchemaV1(AcceptInvitationInput),
+  async ({ invitationId }) => {
+    const { request } = getRequestEvent();
+    await run(
+      acceptInvitation(request.headers, invitationId),
+      organizationFailure(
+        "The invitation could not be accepted. Sign in with the invited email and try again."
       ),
       { signal: request.signal }
     );
@@ -83,7 +125,7 @@ export const createOrganizationForm = form(
   async (input) => {
     const { request } = getRequestEvent();
     await run(
-      createOrganization(request.headers, input),
+      create(request.headers, input),
       organizationFailure(
         "The Organization could not be created. Try again later."
       ),
@@ -93,89 +135,11 @@ export const createOrganizationForm = form(
   }
 );
 
-const listOrganizations = Effect.fn("Organizations.list")(function* (
-  requestHeaders: Headers
-) {
-  const headers = yield* forwardedHeaders(requestHeaders);
-  const { data, error: providerError } = yield* Effect.tryPromise({
-    catch: (cause) => new Unavailable({ cause }),
-    try: (signal) =>
-      authClient.organization.list({ fetchOptions: { headers, signal } }),
-  });
-  if (providerError) {
-    return yield* new Unavailable({ cause: providerError });
-  }
-  const organizations = decodeOrganizations(data ?? []);
-  if (Option.isNone(organizations)) {
-    return yield* new Malformed();
-  }
-  return organizations.value;
-});
-
-const findOrganization = Effect.fn("Organizations.get")(function* (
-  requestHeaders: Headers,
-  organizationId: typeof OrganizationId.Type
-) {
-  const headers = yield* forwardedHeaders(requestHeaders);
-  const { data, error: providerError } = yield* Effect.tryPromise({
-    catch: (cause) => new Unavailable({ cause }),
-    try: (signal) =>
-      authClient.organization.getOrganization({
-        fetchOptions: { headers, signal },
-        query: { organizationId },
-      }),
-  });
-  if (providerError) {
-    if (providerError.status === 401) {
-      return yield* new Unauthenticated();
-    }
-    if (
-      providerError.status === 403 ||
-      providerError.status === 404 ||
-      providerError.code ===
-        ORGANIZATION_ERROR_CODES.ORGANIZATION_NOT_FOUND.code
-    ) {
-      return yield* new NotFound();
-    }
-    return yield* new Unavailable({ cause: providerError });
-  }
-  if (data === null) {
-    return yield* new NotFound();
-  }
-  const organization = decodeOrganization(data);
-  if (Option.isNone(organization)) {
-    return yield* new Malformed();
-  }
-  return organization.value;
-});
-
-const createOrganization = Effect.fn("Organizations.create")(function* (
-  requestHeaders: Headers,
-  input: typeof CreateOrganizationInput.Type
-) {
-  const headers = yield* forwardedHeaders(requestHeaders);
-  const { data, error: providerError } = yield* Effect.tryPromise({
-    catch: (cause) => new Unavailable({ cause }),
-    try: (signal) =>
-      authClient.organization.create({
-        ...input,
-        fetchOptions: { headers, signal },
-      }),
-  });
-  if (providerError) {
-    return yield* new Unavailable({ cause: providerError });
-  }
-  const organization = decodeOrganization(data);
-  if (Option.isNone(organization)) {
-    return yield* new Malformed();
-  }
-  return organization.value;
-});
-
 const organizationFailure = (unavailableMessage: string) =>
   Match.type<Unavailable | Malformed>().pipe(
     Match.tagsExhaustive({
-      "Organizations.Malformed": () => error(500),
-      "Organizations.Unavailable": () => error(503, unavailableMessage),
+      "BetterAuthOrganizations.Malformed": () => error(500),
+      "BetterAuthOrganizations.Unavailable": () =>
+        error(503, unavailableMessage),
     })
   );

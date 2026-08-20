@@ -28,6 +28,10 @@ _Avoid_: Tenant, Workspace, Team
 A User's membership in one Organization
 _Avoid_: Membership, OrganizationUser
 
+**Invitation**:
+A request for a User identified by email to become a Member of one Organization
+_Avoid_: Invite, MembershipRequest
+
 **Organization Role**:
 A named set of Organization Permissions assigned to a Member
 _Avoid_: Group, AccessLevel
