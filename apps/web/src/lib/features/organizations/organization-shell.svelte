@@ -38,6 +38,12 @@
       </a>
       <a
         class="underline-offset-4 hover:underline"
+        href={`/org/${organization.id}/agents`}
+      >
+        Agents
+      </a>
+      <a
+        class="underline-offset-4 hover:underline"
         href={`/org/${organization.id}/members`}
       >
         Members
