@@ -1,8 +1,11 @@
 <script lang="ts">
+  import { organizationRoleAllows } from "@effect-template/domain/organization";
   import InviteMemberForm from "#lib/features/organizations/invite-member-form.svelte";
   import MemberList from "#lib/features/organizations/member-list.svelte";
+  import { getOrganizationContext } from "#lib/features/organizations/organization-context.ts";
   import { getOrganizationPeople } from "#lib/remotes/organizations.remote.ts";
-  import { page } from "$app/state";
+
+  const active = getOrganizationContext();
 </script>
 
 <svelte:head>
@@ -13,11 +16,19 @@
   >
 </svelte:head>
 
-<div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
+<div
+  class={[
+    "grid gap-8",
+    organizationRoleAllows(active.role, "member:invite") &&
+      "lg:grid-cols-[minmax(0,1fr)_22rem]",
+  ]}
+>
   <MemberList
     {...(await getOrganizationPeople({
-      organizationId: page.params.organizationId ?? "",
+      organizationId: active.organization.id,
     }))}
   />
-  <InviteMemberForm />
+  {#if organizationRoleAllows(active.role, "member:invite")}
+    <InviteMemberForm />
+  {/if}
 </div>

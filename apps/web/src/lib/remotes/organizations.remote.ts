@@ -17,6 +17,7 @@ import {
   listPeople,
   type Malformed,
   type NotFound,
+  type PermissionDenied,
   type Unauthenticated,
   type Unavailable,
 } from "../server/better-auth/organizations.ts";
@@ -56,19 +57,8 @@ export const getOrganization = query(
     const { request } = getRequestEvent();
     return run(
       find(request.headers, organizationId),
-      Match.type<Unavailable | Malformed | Unauthenticated | NotFound>().pipe(
-        Match.tagsExhaustive({
-          "BetterAuthOrganizations.Malformed": () => error(500),
-          "BetterAuthOrganizations.NotFound": () =>
-            error(404, "Organization not found"),
-          "BetterAuthOrganizations.Unauthenticated": () =>
-            error(401, "Sign in to continue."),
-          "BetterAuthOrganizations.Unavailable": () =>
-            error(
-              503,
-              "The Organization could not be loaded. Try again later."
-            ),
-        })
+      scopedOrganizationFailure(
+        "The Organization could not be loaded. Try again later."
       ),
       { signal: request.signal }
     );
@@ -82,7 +72,7 @@ export const getOrganizationPeople = query(
     const { request } = getRequestEvent();
     return run(
       listPeople(request.headers, organizationId),
-      organizationFailure(
+      scopedOrganizationFailure(
         "Organization Members could not be loaded. Try again later."
       ),
       { signal: request.signal }
@@ -97,7 +87,21 @@ export const inviteMemberForm = form(
     const { request } = getRequestEvent();
     await run(
       inviteMember(request.headers, input),
-      organizationFailure("The invitation could not be sent. Try again later."),
+      Match.type<
+        Unavailable | Malformed | Unauthenticated | NotFound | PermissionDenied
+      >().pipe(
+        Match.tagsExhaustive({
+          "BetterAuthOrganizations.Malformed": () => error(500),
+          "BetterAuthOrganizations.NotFound": () =>
+            error(404, "Organization not found"),
+          "BetterAuthOrganizations.PermissionDenied": () =>
+            error(403, "You do not have permission to invite Members."),
+          "BetterAuthOrganizations.Unauthenticated": () =>
+            error(401, "Sign in to continue."),
+          "BetterAuthOrganizations.Unavailable": () =>
+            error(503, "The invitation could not be sent. Try again later."),
+        })
+      ),
       { signal: request.signal }
     );
     await requested(getOrganizationPeople, 1).refreshAll();
@@ -134,6 +138,19 @@ export const createOrganizationForm = form(
     await requested(getOrganizations, 1).refreshAll();
   }
 );
+
+const scopedOrganizationFailure = (unavailableMessage: string) =>
+  Match.type<Unavailable | Malformed | Unauthenticated | NotFound>().pipe(
+    Match.tagsExhaustive({
+      "BetterAuthOrganizations.Malformed": () => error(500),
+      "BetterAuthOrganizations.NotFound": () =>
+        error(404, "Organization not found"),
+      "BetterAuthOrganizations.Unauthenticated": () =>
+        error(401, "Sign in to continue."),
+      "BetterAuthOrganizations.Unavailable": () =>
+        error(503, unavailableMessage),
+    })
+  );
 
 const organizationFailure = (unavailableMessage: string) =>
   Match.type<Unavailable | Malformed>().pipe(

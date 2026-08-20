@@ -5,8 +5,10 @@ import {
   type OrganizationInvitationId,
   OrganizationMember,
   type OrganizationName,
-  type OrganizationRole,
+  OrganizationPermission,
+  OrganizationRole,
   type OrganizationSlug,
+  organizationRoleAllows,
 } from "@effect-template/domain/organization";
 import { ORGANIZATION_ERROR_CODES } from "better-auth/client/plugins";
 import { Effect, Option, Schema } from "effect";
@@ -47,6 +49,12 @@ export class NotFound extends Schema.TaggedErrorClass<NotFound>()(
   {}
 ) {}
 
+/** Indicates that the current Member lacks an Organization Permission. */
+export class PermissionDenied extends Schema.TaggedErrorClass<PermissionDenied>()(
+  "BetterAuthOrganizations.PermissionDenied",
+  { permission: OrganizationPermission }
+) {}
+
 const decodeOrganization = Schema.decodeUnknownOption(Organization);
 const decodeOrganizations = Schema.decodeUnknownOption(
   Schema.Array(Organization)
@@ -56,6 +64,9 @@ const decodeMembers = Schema.decodeUnknownOption(
 );
 const decodeInvitations = Schema.decodeUnknownOption(
   Schema.Array(OrganizationInvitation)
+);
+const decodeOrganizationRole = Schema.decodeUnknownOption(
+  Schema.Struct({ role: OrganizationRole })
 );
 
 /** Lists the Organizations visible to the caller represented by the request headers. */
@@ -108,7 +119,8 @@ export const find = Effect.fn("BetterAuthOrganizations.find")(function* (
   if (Option.isNone(organization)) {
     return yield* new Malformed({ operation: "find" });
   }
-  return organization.value;
+  const role = yield* roleFor(headers, organizationId, "find");
+  return { organization: organization.value, role };
 });
 
 /** Creates an Organization through Better Auth. */
@@ -143,22 +155,12 @@ export const listPeople = Effect.fn("BetterAuthOrganizations.listPeople")(
     organizationId: typeof OrganizationId.Type
   ) {
     const headers = yield* forwardedHeaders(requestHeaders);
-    const [membersResponse, invitationsResponse] = yield* Effect.all(
-      [
-        attempt("listPeople", (signal) =>
-          authClient.organization.listMembers({
-            fetchOptions: { headers, signal },
-            query: { organizationId },
-          })
-        ),
-        attempt("listPeople", (signal) =>
-          authClient.organization.listInvitations({
-            fetchOptions: { headers, signal },
-            query: { organizationId },
-          })
-        ),
-      ],
-      { concurrency: "unbounded" }
+    const role = yield* roleFor(headers, organizationId, "listPeople");
+    const membersResponse = yield* attempt("listPeople", (signal) =>
+      authClient.organization.listMembers({
+        fetchOptions: { headers, signal },
+        query: { organizationId },
+      })
     );
     if (membersResponse.error) {
       return yield* new Unavailable({
@@ -166,21 +168,32 @@ export const listPeople = Effect.fn("BetterAuthOrganizations.listPeople")(
         operation: "listPeople",
       });
     }
-    if (invitationsResponse.error) {
-      return yield* new Unavailable({
-        cause: invitationsResponse.error,
-        operation: "listPeople",
-      });
-    }
     const members = decodeMembers(membersResponse.data);
-    const invitations = decodeInvitations(invitationsResponse.data);
-    if (Option.isNone(members) || Option.isNone(invitations)) {
+    if (Option.isNone(members)) {
       return yield* new Malformed({ operation: "listPeople" });
     }
-    return {
-      invitations: invitations.value,
-      members: members.value.members,
-    };
+    const invitations = yield* organizationRoleAllows(role, "member:invite")
+      ? Effect.gen(function* () {
+          const response = yield* attempt("listPeople", (signal) =>
+            authClient.organization.listInvitations({
+              fetchOptions: { headers, signal },
+              query: { organizationId },
+            })
+          );
+          if (response.error) {
+            return yield* new Unavailable({
+              cause: response.error,
+              operation: "listPeople",
+            });
+          }
+          const decoded = decodeInvitations(response.data);
+          if (Option.isNone(decoded)) {
+            return yield* new Malformed({ operation: "listPeople" });
+          }
+          return decoded.value;
+        })
+      : Effect.succeed([]);
+    return { invitations, members: members.value.members };
   }
 );
 
@@ -195,6 +208,10 @@ export const inviteMember = Effect.fn("BetterAuthOrganizations.inviteMember")(
     }
   ) {
     const headers = yield* forwardedHeaders(requestHeaders);
+    const role = yield* roleFor(headers, input.organizationId, "inviteMember");
+    if (!organizationRoleAllows(role, "member:invite")) {
+      return yield* new PermissionDenied({ permission: "member:invite" });
+    }
     const { error } = yield* attempt("inviteMember", (signal) =>
       authClient.organization.inviteMember({
         ...input,
@@ -230,6 +247,33 @@ export const acceptInvitation = Effect.fn(
       operation: "acceptInvitation",
     });
   }
+});
+
+const roleFor = Effect.fn("BetterAuthOrganizations.roleFor")(function* (
+  headers: Headers,
+  organizationId: typeof OrganizationId.Type,
+  operation: Operation
+) {
+  const { data, error } = yield* attempt(operation, (signal) =>
+    authClient.organization.getActiveMemberRole({
+      fetchOptions: { headers, signal },
+      query: { organizationId },
+    })
+  );
+  if (error) {
+    if (error.status === 401) {
+      return yield* new Unauthenticated();
+    }
+    if (error.status === 403 || error.status === 404) {
+      return yield* new NotFound();
+    }
+    return yield* new Unavailable({ cause: error, operation });
+  }
+  const decoded = decodeOrganizationRole(data);
+  if (Option.isNone(decoded)) {
+    return yield* new Malformed({ operation });
+  }
+  return decoded.value.role;
 });
 
 const attempt = <A>(

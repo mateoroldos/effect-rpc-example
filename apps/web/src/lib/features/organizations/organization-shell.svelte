@@ -1,16 +1,28 @@
 <script lang="ts">
-  import type { Organization } from "@effect-template/domain/organization";
+  import {
+    type Organization,
+    type OrganizationRole,
+    organizationRoleAllows,
+  } from "@effect-template/domain/organization";
   import type { Snippet } from "svelte";
   import { setOrganizationContext } from "./organization-context.ts";
 
   let {
     children,
     organization,
-  }: { children: Snippet; organization: Organization } = $props();
+    role,
+  }: {
+    children: Snippet;
+    organization: Organization;
+    role: OrganizationRole;
+  } = $props();
 
   setOrganizationContext({
     get organization() {
       return organization;
+    },
+    get role() {
+      return role;
     },
   });
 </script>
@@ -42,12 +54,14 @@
       >
         Agents
       </a>
-      <a
-        class="underline-offset-4 hover:underline"
-        href={`/org/${organization.id}/members`}
-      >
-        Members
-      </a>
+      {#if organizationRoleAllows(role, "member:read")}
+        <a
+          class="underline-offset-4 hover:underline"
+          href={`/org/${organization.id}/members`}
+        >
+          Members
+        </a>
+      {/if}
     </nav>
   </header>
 
