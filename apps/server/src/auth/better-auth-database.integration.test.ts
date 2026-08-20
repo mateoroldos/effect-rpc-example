@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest";
 import { AuthorizationBetterAuth } from "@effect-template/auth-better/authorization";
+import { BetterAuthEmail } from "@effect-template/auth-better/better-auth-email";
 import { BetterAuthInstance } from "@effect-template/auth-better/better-auth-instance";
-import { makeAuth } from "@effect-template/auth-better/config";
 // biome-ignore lint/performance/noNamespaceImport: Better Auth requires the complete generated schema module.
 import * as authSchema from "@effect-template/database/auth-schema";
 import { DatabasePostgres } from "@effect-template/database/postgres";
@@ -11,6 +11,16 @@ import { ConfigProvider, Effect, Layer, Redacted } from "effect";
 import { betterAuthDatabase, effectDatabaseLayer } from "../infra/database.ts";
 import { PostgresPool } from "../infra/postgres-pool/index.ts";
 import { acquireDisposableDatabaseUrl } from "../test/disposable-postgres.ts";
+
+const betterAuthEmail = BetterAuthEmail.Service.of({
+  sendInvitation: () => Effect.void,
+  sendPasswordReset: () => Effect.void,
+  sendVerification: () => Effect.void,
+});
+const betterAuthEmailLayer = Layer.succeed(
+  BetterAuthEmail.Service,
+  betterAuthEmail
+);
 
 describe("Better Auth database integration", () => {
   it.effect("persists auth data and authorizes Organization permissions", () =>
@@ -33,10 +43,27 @@ describe("Better Auth database integration", () => {
           yield* DatabasePostgres.runMigrations;
           const database = yield* betterAuthDatabase;
           const effectDatabase = yield* DatabasePostgres.Service;
-          const auth = makeAuth(database, authSchema, {
-            baseURL: "http://auth.integration.test",
-            secret: "integration-test-secret-at-least-32-characters",
-          });
+          const instanceLayer = BetterAuthInstance.layerWithoutDependencies({
+            baseUrl: new URL("http://auth.integration.test"),
+            database,
+            schema: authSchema,
+            secret: Redacted.make(
+              "integration-test-secret-at-least-32-characters"
+            ),
+          }).pipe(Layer.provide(betterAuthEmailLayer));
+          const boundariesLayer = Layer.merge(
+            instanceLayer,
+            AuthorizationBetterAuth.layerWithoutDependencies.pipe(
+              Layer.provide(instanceLayer)
+            )
+          );
+          const boundaries = yield* Layer.build(boundariesLayer);
+          const { auth } = yield* BetterAuthInstance.Service.pipe(
+            Effect.provide(boundaries)
+          );
+          const authorization = yield* AuthorizationBetterAuth.Service.pipe(
+            Effect.provide(boundaries)
+          );
 
           const ownerResponse = yield* Effect.tryPromise(() =>
             auth.api.signUpEmail({
@@ -101,45 +128,28 @@ describe("Better Auth database integration", () => {
           );
 
           const organizationId = OrganizationId.make(organization.id);
-          const authorizationLayer =
-            AuthorizationBetterAuth.layerWithoutDependencies.pipe(
-              Layer.provide(
-                BetterAuthInstance.layer(database, authSchema, {
-                  baseURL: "http://auth.integration.test",
-                  secret: "integration-test-secret-at-least-32-characters",
-                })
-              )
-            );
+          yield* authorization.require(
+            ownerHeaders,
+            organizationId,
+            "agent:create"
+          );
+          yield* authorization.require(
+            memberHeaders,
+            organizationId,
+            "agent:read"
+          );
 
-          yield* Effect.gen(function* () {
-            const authorization = yield* AuthorizationBetterAuth.Service;
+          const forbidden = yield* authorization
+            .require(memberHeaders, organizationId, "agent:create")
+            .pipe(Effect.flip);
+          assert.strictEqual(forbidden._tag, "Authorization.Forbidden");
 
-            yield* authorization.require(
-              ownerHeaders,
-              organizationId,
-              "agent:create"
-            );
-            yield* authorization.require(
-              memberHeaders,
-              organizationId,
-              "agent:read"
-            );
-
-            const forbidden = yield* authorization
-              .require(memberHeaders, organizationId, "agent:create")
-              .pipe(Effect.flip);
-            assert.strictEqual(forbidden._tag, "Authorization.Forbidden");
-
-            const unauthenticated = yield* authorization
-              .require(new Headers(), organizationId, "agent:read")
-              .pipe(Effect.flip);
-            assert.strictEqual(
-              unauthenticated._tag,
-              "Authorization.Unauthenticated"
-            );
-          }).pipe(
-            // @effect-diagnostics-next-line strictEffectProvide:off
-            Effect.provide(authorizationLayer)
+          const unauthenticated = yield* authorization
+            .require(new Headers(), organizationId, "agent:read")
+            .pipe(Effect.flip);
+          assert.strictEqual(
+            unauthenticated._tag,
+            "Authorization.Unauthenticated"
           );
         }).pipe(
           // @effect-diagnostics-next-line strictEffectProvide:off

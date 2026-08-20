@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./better-auth-email": "./src/better-auth-email/index.ts",
+    "./better-auth-http": "./src/better-auth-http/index.ts",
     "./better-auth-instance": "./src/better-auth-instance/index.ts",
     "./config": "./src/config.ts",
     "./authorization": "./src/authorization-better-auth/index.ts"
