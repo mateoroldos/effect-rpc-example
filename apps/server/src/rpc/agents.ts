@@ -28,7 +28,8 @@ export const agentsHandlersLayer = group.toLayer(
             "AgentDirectory.IdGenerationError": () =>
               new AgentsRpc.Unavailable(),
             "AgentStore.PersistenceError": () => new AgentsRpc.Unavailable(),
-            "Authorization.Forbidden": () => new AgentsRpc.Forbidden(),
+            "Authorization.NotMember": () => new AgentsRpc.Forbidden(),
+            "Authorization.PermissionDenied": () => new AgentsRpc.Forbidden(),
             "Authorization.Unauthenticated": () =>
               new AgentsRpc.Unauthenticated(),
             "Authorization.Unavailable": () => new AgentsRpc.Unavailable(),
@@ -44,7 +45,8 @@ export const agentsHandlersLayer = group.toLayer(
           Effect.catchTags({
             "AgentDirectory.NotFound": () => new AgentsRpc.NotFound({ id }),
             "AgentStore.PersistenceError": () => new AgentsRpc.Unavailable(),
-            "Authorization.Forbidden": () => new AgentsRpc.Forbidden(),
+            "Authorization.NotMember": () => new AgentsRpc.Forbidden(),
+            "Authorization.PermissionDenied": () => new AgentsRpc.Forbidden(),
             "Authorization.Unauthenticated": () =>
               new AgentsRpc.Unauthenticated(),
             "Authorization.Unavailable": () => new AgentsRpc.Unavailable(),
@@ -60,7 +62,8 @@ export const agentsHandlersLayer = group.toLayer(
           ),
           Effect.catchTags({
             "AgentStore.PersistenceError": () => new AgentsRpc.Unavailable(),
-            "Authorization.Forbidden": () => new AgentsRpc.Forbidden(),
+            "Authorization.NotMember": () => new AgentsRpc.Forbidden(),
+            "Authorization.PermissionDenied": () => new AgentsRpc.Forbidden(),
             "Authorization.Unauthenticated": () =>
               new AgentsRpc.Unauthenticated(),
             "Authorization.Unavailable": () => new AgentsRpc.Unavailable(),

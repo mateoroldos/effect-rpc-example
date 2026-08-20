@@ -145,10 +145,25 @@ describe("Better Auth database integration", () => {
             "agent:read"
           );
 
-          const forbidden = yield* authorization
+          const denied = yield* authorization
             .require(memberHeaders, organizationId, "agent:create")
             .pipe(Effect.flip);
-          assert.strictEqual(forbidden._tag, "Authorization.Forbidden");
+          assert.deepInclude(denied, {
+            _tag: "Authorization.PermissionDenied",
+            organizationId,
+            permission: "agent:create",
+          });
+
+          const unknownOrganizationId = OrganizationId.make(
+            "123e4567-e89b-42d3-a456-426614174099"
+          );
+          const notMember = yield* authorization
+            .require(memberHeaders, unknownOrganizationId, "agent:read")
+            .pipe(Effect.flip);
+          assert.deepInclude(notMember, {
+            _tag: "Authorization.NotMember",
+            organizationId: unknownOrganizationId,
+          });
 
           const unauthenticated = yield* authorization
             .require(new Headers(), organizationId, "agent:read")

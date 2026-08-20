@@ -17,8 +17,7 @@ const statements = {
 /** Better Auth access control extended with application Organization Permissions. */
 export const accessControl = createAccessControl(statements);
 
-/** Translates application Organization Permissions to Better Auth resources and actions. */
-export const betterAuthPermissions = {
+const betterAuthAgentActionsByPermission = {
   "agent:create": { agent: ["create"] },
   "agent:read": { agent: ["read"] },
   "member:invite": { agent: [] },
@@ -47,7 +46,7 @@ export const roles = {
 function betterAuthStatementsFor(role: OrganizationRole) {
   return {
     agent: permissionsByOrganizationRole[role].flatMap(
-      (permission) => betterAuthPermissions[permission].agent
+      (permission) => betterAuthAgentActionsByPermission[permission].agent
     ),
   };
 }

@@ -1,6 +1,6 @@
 import {
   OrganizationId,
-  type OrganizationPermission,
+  OrganizationPermission,
 } from "@effect-template/domain/organization";
 import { Context, Effect, Layer, Schema } from "effect";
 
@@ -13,7 +13,10 @@ export interface Interface {
   readonly require: (
     organizationId: OrganizationId,
     permission: OrganizationPermission
-  ) => Effect.Effect<void, Unauthenticated | Forbidden | Unavailable>;
+  ) => Effect.Effect<
+    void,
+    NotMember | PermissionDenied | Unauthenticated | Unavailable
+  >;
 }
 
 /** Authorizes Organization operations for the current request or command. */
@@ -27,10 +30,16 @@ export class Unauthenticated extends Schema.TaggedErrorClass<Unauthenticated>()(
   {}
 ) {}
 
-/** Indicates that the current Principal lacks the requested permission. */
-export class Forbidden extends Schema.TaggedErrorClass<Forbidden>()(
-  "Authorization.Forbidden",
+/** Indicates that the current Principal is not a Member of the Organization. */
+export class NotMember extends Schema.TaggedErrorClass<NotMember>()(
+  "Authorization.NotMember",
   { organizationId: OrganizationId }
+) {}
+
+/** Indicates that the current Member lacks the requested Organization Permission. */
+export class PermissionDenied extends Schema.TaggedErrorClass<PermissionDenied>()(
+  "Authorization.PermissionDenied",
+  { organizationId: OrganizationId, permission: OrganizationPermission }
 ) {}
 
 /** Indicates that an Organization permission could not be determined. */
