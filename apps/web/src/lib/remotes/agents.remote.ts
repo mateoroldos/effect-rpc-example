@@ -4,7 +4,7 @@ import { error } from "@sveltejs/kit";
 import { Match, Schema } from "effect";
 import { form, query, requested } from "$app/server";
 import type { AgentListItem } from "../features/agents/agent-list-item.ts";
-import { runRpc } from "../server/remotes/rpc.ts";
+import { runRpc } from "../server/rpc/run.ts";
 
 const persistedAgent = (agent: Agent): AgentListItem => ({
   _tag: "Persisted",
