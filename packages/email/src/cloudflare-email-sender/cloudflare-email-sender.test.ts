@@ -10,7 +10,7 @@ import {
 const config: CloudflareEmailConfig = {
   accountId: "acc_123",
   apiToken: Redacted.make("secret"),
-  fromAddress: "notifications@example.com",
+  fromAddress: EmailSender.EmailAddress.make("notifications@example.com"),
   fromName: "Example",
 };
 

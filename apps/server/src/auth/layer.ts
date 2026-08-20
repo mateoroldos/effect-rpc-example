@@ -4,32 +4,43 @@ import { BetterAuthHttp } from "@effect-template/auth-better/better-auth-http";
 import { BetterAuthInstance } from "@effect-template/auth-better/better-auth-instance";
 // biome-ignore lint/performance/noNamespaceImport: Better Auth requires the complete generated schema module.
 import * as authSchema from "@effect-template/database/auth-schema";
-import { Config, Effect, Layer } from "effect";
-
+import { Effect, Layer, type Redacted } from "effect";
 import { betterAuthDatabase } from "../infra/database.ts";
 import { AuthorizationRpc } from "./authorization-rpc/index.ts";
 
-const betterAuthInstanceLayer = Layer.unwrap(
-  Effect.gen(function* makeBetterAuthInstanceLayer() {
-    const database = yield* betterAuthDatabase;
-    const emailLayer = BetterAuthEmail.layerWithoutDependencies({
-      webBaseUrl: yield* Config.url("WEB_URL"),
-    });
-    return BetterAuthInstance.layerWithoutDependencies({
-      baseUrl: yield* Config.url("BETTER_AUTH_URL"),
-      database,
-      schema: authSchema,
-      secret: yield* Config.redacted("BETTER_AUTH_SECRET"),
-    }).pipe(Layer.provide(emailLayer));
-  })
-);
+export interface Options {
+  readonly apiBaseUrl: URL;
+  readonly secret: Redacted.Redacted<string>;
+  readonly webBaseUrl: URL;
+}
+
+const betterAuthInstanceLayer = (options: Options) =>
+  Layer.unwrap(
+    Effect.gen(function* makeBetterAuthInstanceLayer() {
+      const database = yield* betterAuthDatabase;
+      return BetterAuthInstance.layerWithoutDependencies({
+        baseUrl: options.apiBaseUrl,
+        database,
+        schema: authSchema,
+        secret: options.secret,
+        trustedOrigins: [options.webBaseUrl.origin],
+      }).pipe(
+        Layer.provide(
+          BetterAuthEmail.layerWithoutDependencies({
+            webBaseUrl: options.webBaseUrl,
+          })
+        )
+      );
+    })
+  );
 
 const authorizationRpcLayer = AuthorizationRpc.layer.pipe(
   Layer.provide(AuthorizationBetterAuth.layerWithoutDependencies)
 );
 
 /** Better Auth HTTP and request authorization capabilities for the server. */
-export const authLayer = Layer.merge(
-  BetterAuthHttp.layerWithoutDependencies,
-  authorizationRpcLayer
-).pipe(Layer.provide(betterAuthInstanceLayer));
+export const authLayer = (options: Options) =>
+  Layer.merge(
+    BetterAuthHttp.layerWithoutDependencies,
+    authorizationRpcLayer
+  ).pipe(Layer.provide(betterAuthInstanceLayer(options)));

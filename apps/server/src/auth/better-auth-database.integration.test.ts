@@ -6,7 +6,7 @@ import { BetterAuthInstance } from "@effect-template/auth-better/better-auth-ins
 import * as authSchema from "@effect-template/database/auth-schema";
 import { DatabasePostgres } from "@effect-template/database/postgres";
 import { OrganizationId } from "@effect-template/domain/organization";
-import { ConfigProvider, Effect, Layer, Redacted } from "effect";
+import { Effect, Layer, Redacted } from "effect";
 
 import { betterAuthDatabase, effectDatabaseLayer } from "../infra/database.ts";
 import { PostgresPool } from "../infra/postgres-pool/index.ts";
@@ -29,14 +29,7 @@ describe("Better Auth database integration", () => {
         const databaseUrl = yield* acquireDisposableDatabaseUrl;
 
         const testDatabaseLayer = effectDatabaseLayer.pipe(
-          Layer.provideMerge(PostgresPool.layer),
-          Layer.provide(
-            ConfigProvider.layer(
-              ConfigProvider.fromUnknown({
-                DATABASE_URL: Redacted.value(databaseUrl),
-              })
-            )
-          )
+          Layer.provideMerge(PostgresPool.layer(databaseUrl))
         );
 
         yield* Effect.gen(function* () {
@@ -50,6 +43,7 @@ describe("Better Auth database integration", () => {
             secret: Redacted.make(
               "integration-test-secret-at-least-32-characters"
             ),
+            trustedOrigins: ["http://app.integration.test"],
           }).pipe(Layer.provide(betterAuthEmailLayer));
           const boundariesLayer = Layer.merge(
             instanceLayer,
