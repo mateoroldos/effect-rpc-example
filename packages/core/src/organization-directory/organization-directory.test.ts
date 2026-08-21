@@ -6,7 +6,7 @@ import {
   OrganizationName,
   OrganizationSlug,
 } from "@effect-template/domain/organization";
-import { Effect, Layer } from "effect";
+import { Context, Effect, Layer, Ref } from "effect";
 import { Authorization } from "../authorization/index.ts";
 import { OrganizationDirectory } from "./index.ts";
 import { OrganizationProvider } from "./organization-provider/index.ts";
@@ -23,24 +23,47 @@ const organization = {
   slug: OrganizationSlug.make("acme"),
 };
 
-const providerLayer = Layer.succeed(
-  OrganizationProvider.Service,
-  OrganizationProvider.Service.of({
-    acceptInvitation: () => Effect.void,
-    create: (input) => Effect.succeed({ id: organizationId, ...input }),
-    find: () => Effect.succeed({ organization, role: "owner" as const }),
-    invite: () => Effect.void,
-    list: Effect.succeed([organization]),
-    listInvitations: () =>
-      Effect.succeed([
-        {
-          email: EmailAddress.make("invitee@example.com"),
-          id: invitationId,
-          role: "member" as const,
-          status: "pending" as const,
-        },
-      ]),
-    listMembers: () => Effect.succeed([]),
+interface ProviderProbeInterface {
+  readonly invitationListCalls: Effect.Effect<number>;
+  readonly inviteCalls: Effect.Effect<number>;
+}
+
+class ProviderProbe extends Context.Service<
+  ProviderProbe,
+  ProviderProbeInterface
+>()("@effect-template/core/OrganizationDirectory/ProviderProbe") {}
+
+const providerLayer = Layer.effectContext(
+  Effect.gen(function* makeOrganizationProviderTest() {
+    const invitationListCalls = yield* Ref.make(0);
+    const inviteCalls = yield* Ref.make(0);
+    const provider = OrganizationProvider.Service.of({
+      acceptInvitation: () => Effect.void,
+      create: (input) => Effect.succeed({ id: organizationId, ...input }),
+      find: () => Effect.succeed({ organization, role: "owner" as const }),
+      invite: () => Ref.update(inviteCalls, (calls) => calls + 1),
+      list: Effect.succeed([organization]),
+      listInvitations: () =>
+        Ref.update(invitationListCalls, (calls) => calls + 1).pipe(
+          Effect.as([
+            {
+              email: EmailAddress.make("invitee@example.com"),
+              id: invitationId,
+              role: "member" as const,
+              status: "pending" as const,
+            },
+          ])
+        ),
+      listMembers: () => Effect.succeed([]),
+    });
+    const probe = ProviderProbe.of({
+      invitationListCalls: Ref.get(invitationListCalls),
+      inviteCalls: Ref.get(inviteCalls),
+    });
+    return Context.empty().pipe(
+      Context.add(OrganizationProvider.Service, provider),
+      Context.add(ProviderProbe, probe)
+    );
   })
 );
 
@@ -84,15 +107,16 @@ describe("OrganizationDirectory", () => {
     );
   });
 
-  it.layer(layer(authorizedAs("admin")))("admin", (test) => {
-    test.effect("cannot assign the admin Role", () =>
+  it.layer(layer(authorizedAs("owner")))("Role escalation", (test) => {
+    test.effect("rejects the owner Role before provider I/O", () =>
       Effect.gen(function* () {
         const service = yield* OrganizationDirectory.Service;
+        const probe = yield* ProviderProbe;
         const result = yield* Effect.flip(
           service.invite({
             email: EmailAddress.make("invitee@example.com"),
             organizationId,
-            role: "admin",
+            role: "owner",
           })
         );
 
@@ -100,6 +124,20 @@ describe("OrganizationDirectory", () => {
           result._tag,
           "OrganizationDirectory.RoleNotAssignable"
         );
+        assert.strictEqual(yield* probe.inviteCalls, 0);
+      })
+    );
+  });
+
+  it.layer(layer(authorizedAs("member")))("Member", (test) => {
+    test.effect("lists Members without requesting Invitations", () =>
+      Effect.gen(function* () {
+        const service = yield* OrganizationDirectory.Service;
+        const probe = yield* ProviderProbe;
+        const people = yield* service.listPeople(organizationId);
+
+        assert.deepEqual(people, { invitations: [], members: [] });
+        assert.strictEqual(yield* probe.invitationListCalls, 0);
       })
     );
   });

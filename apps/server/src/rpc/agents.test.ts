@@ -2,7 +2,7 @@ import { assert, describe, it } from "@effect/vitest";
 import { AgentDirectory } from "@effect-template/core/agent-directory";
 import { AgentStore } from "@effect-template/core/agent-directory/store";
 import { Authorization } from "@effect-template/core/authorization";
-import { OrganizationDirectory } from "@effect-template/core/organization-directory";
+import type { OrganizationDirectory } from "@effect-template/core/organization-directory";
 import { OrganizationProvider } from "@effect-template/core/organization-directory/provider";
 import { AgentId, AgentName } from "@effect-template/domain/agent";
 import { OrganizationId } from "@effect-template/domain/organization";
@@ -28,7 +28,7 @@ const availableDirectoryLayer = AgentDirectory.layerWithoutDependencies.pipe(
 );
 const organizationUnavailable = (operation: OrganizationDirectory.Operation) =>
   Effect.fail(
-    new OrganizationDirectory.Unavailable({
+    new OrganizationProvider.Unavailable({
       cause: new Error("unused Organization provider"),
       operation,
     })

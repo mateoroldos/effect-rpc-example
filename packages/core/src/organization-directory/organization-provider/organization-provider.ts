@@ -1,21 +1,72 @@
-import type {
-  Organization,
-  OrganizationId,
-  OrganizationInvitation,
+import type { EmailAddress } from "@effect-template/domain/email-address";
+import {
+  type Organization,
+  type OrganizationId,
+  type OrganizationInvitation,
   OrganizationInvitationId,
-  OrganizationMember,
+  type OrganizationMember,
+  type OrganizationName,
+  type OrganizationRole,
+  type OrganizationSlug,
 } from "@effect-template/domain/organization";
-import { Context, type Effect } from "effect";
+import { Context, type Effect, Schema } from "effect";
 import type { Authorization } from "../../authorization/index.ts";
-import type {
-  Conflict,
-  CreateInput,
-  InvitationNotFound,
-  InviteInput,
-  Malformed,
-  Unavailable,
-  VisibleOrganization,
-} from "../organization-directory-contract.ts";
+
+/** Organization provider operations safe to include in diagnostics. */
+export const Operation = Schema.Literals([
+  "list",
+  "find",
+  "create",
+  "listPeople",
+  "invite",
+  "acceptInvitation",
+]);
+
+/** Organization provider operation safe to include in diagnostics. */
+export type Operation = typeof Operation.Type;
+
+/** Input required by a provider to create an Organization. */
+export interface CreateInput {
+  readonly name: OrganizationName;
+  readonly slug: OrganizationSlug;
+}
+
+/** Input required by a provider to invite an Organization Member. */
+export interface InviteInput {
+  readonly email: EmailAddress;
+  readonly organizationId: OrganizationId;
+  readonly role: OrganizationRole;
+}
+
+/** Organization resolved by a provider together with the Principal's Role. */
+export interface VisibleOrganization {
+  readonly organization: Organization;
+  readonly role: OrganizationRole;
+}
+
+/** Indicates that an Organization provider operation is unavailable. */
+export class Unavailable extends Schema.TaggedErrorClass<Unavailable>()(
+  "OrganizationProvider.Unavailable",
+  { cause: Schema.Defect(), operation: Operation }
+) {}
+
+/** Indicates that a provider returned an invalid Organization representation. */
+export class Malformed extends Schema.TaggedErrorClass<Malformed>()(
+  "OrganizationProvider.Malformed",
+  { operation: Operation }
+) {}
+
+/** Indicates that an Organization value is already used by the provider. */
+export class Conflict extends Schema.TaggedErrorClass<Conflict>()(
+  "OrganizationProvider.Conflict",
+  { field: Schema.Literal("slug") }
+) {}
+
+/** Indicates that an Invitation is missing or inaccessible at the provider. */
+export class InvitationNotFound extends Schema.TaggedErrorClass<InvitationNotFound>()(
+  "OrganizationProvider.InvitationNotFound",
+  { invitationId: OrganizationInvitationId }
+) {}
 
 /** Request-bound Organization operations implemented by an external provider. */
 export interface Interface {

@@ -1,5 +1,4 @@
 import { Authorization } from "@effect-template/core/authorization";
-import { OrganizationDirectory } from "@effect-template/core/organization-directory";
 import { OrganizationProvider } from "@effect-template/core/organization-directory/provider";
 import {
   Organization,
@@ -95,7 +94,7 @@ const make = Effect.gen(function* makeOrganizationBetterAuth() {
         });
         return yield* decodeOrganization(value).pipe(
           Effect.mapError(
-            () => new OrganizationDirectory.Malformed({ operation: "create" })
+            () => new OrganizationProvider.Malformed({ operation: "create" })
           )
         );
       }),
@@ -116,7 +115,7 @@ const make = Effect.gen(function* makeOrganizationBetterAuth() {
             roleFor(organizationId).pipe(
               Effect.mapError((error) =>
                 error._tag === "Authorization.Unavailable"
-                  ? new OrganizationDirectory.Unavailable({
+                  ? new OrganizationProvider.Unavailable({
                       cause: error.cause,
                       operation: "find",
                     })
@@ -131,7 +130,7 @@ const make = Effect.gen(function* makeOrganizationBetterAuth() {
         }
         const organization = yield* decodeOrganization(value).pipe(
           Effect.mapError(
-            () => new OrganizationDirectory.Malformed({ operation: "find" })
+            () => new OrganizationProvider.Malformed({ operation: "find" })
           )
         );
         return { organization, role };
@@ -163,7 +162,7 @@ const make = Effect.gen(function* makeOrganizationBetterAuth() {
         Effect.flatMap((value) =>
           decodeOrganizations(value).pipe(
             Effect.mapError(
-              () => new OrganizationDirectory.Malformed({ operation: "list" })
+              () => new OrganizationProvider.Malformed({ operation: "list" })
             )
           )
         ),
@@ -185,7 +184,7 @@ const make = Effect.gen(function* makeOrganizationBetterAuth() {
           return yield* decodeInvitations(value).pipe(
             Effect.mapError(
               () =>
-                new OrganizationDirectory.Malformed({ operation: "listPeople" })
+                new OrganizationProvider.Malformed({ operation: "listPeople" })
             )
           );
         }
@@ -210,7 +209,7 @@ const make = Effect.gen(function* makeOrganizationBetterAuth() {
         const members = yield* decodeMembers(value).pipe(
           Effect.mapError(
             () =>
-              new OrganizationDirectory.Malformed({ operation: "listPeople" })
+              new OrganizationProvider.Malformed({ operation: "listPeople" })
           )
         );
         return members.members;
@@ -244,35 +243,35 @@ const classifyAuthorizationFailure = (
 
 const classifyUnscopedFailure = (
   cause: unknown,
-  operation: OrganizationDirectory.Operation
-): Authorization.Unauthenticated | OrganizationDirectory.Unavailable =>
+  operation: OrganizationProvider.Operation
+): Authorization.Unauthenticated | OrganizationProvider.Unavailable =>
   isUnauthenticated(cause)
     ? new Authorization.Unauthenticated()
-    : new OrganizationDirectory.Unavailable({ cause, operation });
+    : new OrganizationProvider.Unavailable({ cause, operation });
 
 const classifyMembershipFailure = (
   cause: unknown,
   organizationId: OrganizationId,
-  operation: OrganizationDirectory.Operation
+  operation: OrganizationProvider.Operation
 ):
   | Authorization.Unauthenticated
   | Authorization.NotMember
-  | OrganizationDirectory.Unavailable => {
+  | OrganizationProvider.Unavailable => {
   if (isUnauthenticated(cause)) {
     return new Authorization.Unauthenticated();
   }
   if (isNotMember(cause)) {
     return new Authorization.NotMember({ organizationId });
   }
-  return new OrganizationDirectory.Unavailable({ cause, operation });
+  return new OrganizationProvider.Unavailable({ cause, operation });
 };
 
 const classifyCreateFailure = (
   cause: unknown
 ):
   | Authorization.Unauthenticated
-  | OrganizationDirectory.Conflict
-  | OrganizationDirectory.Unavailable => {
+  | OrganizationProvider.Conflict
+  | OrganizationProvider.Unavailable => {
   if (isUnauthenticated(cause)) {
     return new Authorization.Unauthenticated();
   }
@@ -283,21 +282,21 @@ const classifyCreateFailure = (
       ORGANIZATION_ERROR_CODES.ORGANIZATION_SLUG_ALREADY_TAKEN.code
     )
   ) {
-    return new OrganizationDirectory.Conflict({ field: "slug" });
+    return new OrganizationProvider.Conflict({ field: "slug" });
   }
-  return new OrganizationDirectory.Unavailable({ cause, operation: "create" });
+  return new OrganizationProvider.Unavailable({ cause, operation: "create" });
 };
 
 const classifyScopedFailure = (
   cause: unknown,
   organizationId: OrganizationId,
   permission: "member:invite" | "member:read",
-  operation: OrganizationDirectory.Operation
+  operation: OrganizationProvider.Operation
 ):
   | Authorization.Unauthenticated
   | Authorization.NotMember
   | Authorization.PermissionDenied
-  | OrganizationDirectory.Unavailable => {
+  | OrganizationProvider.Unavailable => {
   if (isUnauthenticated(cause)) {
     return new Authorization.Unauthenticated();
   }
@@ -307,7 +306,7 @@ const classifyScopedFailure = (
   if (isAPIError(cause) && cause.status === "FORBIDDEN") {
     return new Authorization.PermissionDenied({ organizationId, permission });
   }
-  return new OrganizationDirectory.Unavailable({ cause, operation });
+  return new OrganizationProvider.Unavailable({ cause, operation });
 };
 
 const classifyInvitationFailure = (
@@ -315,8 +314,8 @@ const classifyInvitationFailure = (
   invitationId: OrganizationInvitationId
 ):
   | Authorization.Unauthenticated
-  | OrganizationDirectory.InvitationNotFound
-  | OrganizationDirectory.Unavailable => {
+  | OrganizationProvider.InvitationNotFound
+  | OrganizationProvider.Unavailable => {
   if (isUnauthenticated(cause)) {
     return new Authorization.Unauthenticated();
   }
@@ -327,9 +326,9 @@ const classifyInvitationFailure = (
       ORGANIZATION_ERROR_CODES.YOU_ARE_NOT_THE_RECIPIENT_OF_THE_INVITATION.code
     )
   ) {
-    return new OrganizationDirectory.InvitationNotFound({ invitationId });
+    return new OrganizationProvider.InvitationNotFound({ invitationId });
   }
-  return new OrganizationDirectory.Unavailable({
+  return new OrganizationProvider.Unavailable({
     cause,
     operation: "acceptInvitation",
   });

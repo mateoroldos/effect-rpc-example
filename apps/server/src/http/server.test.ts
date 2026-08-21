@@ -34,7 +34,7 @@ const agentsRpcHandlersTestLayer = agentsHandlersLayer.pipe(
   Layer.provide(cryptoLayer)
 );
 const unavailableService = () =>
-  new OrganizationDirectory.Unavailable({
+  new OrganizationProvider.Unavailable({
     cause: new Error("Organization service unavailable in Agent-only test"),
     operation: "list",
   });
