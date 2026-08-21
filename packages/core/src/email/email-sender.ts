@@ -1,18 +1,5 @@
+import { EmailAddress } from "@effect-template/domain/email-address";
 import { Context, Effect, Layer, Schema } from "effect";
-
-// Deliberately permissive: real deliverability is decided by the provider, so
-// this only rejects the obviously-malformed. `from` is adapter configuration,
-// not a per-message field, so it never appears here.
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-/** Parses non-blank, single-`@` strings into branded email addresses. */
-export const EmailAddress = Schema.String.pipe(
-  Schema.check(Schema.isPattern(EMAIL_PATTERN)),
-  Schema.brand("EmailAddress")
-);
-
-/** A syntactically valid email address. */
-export type EmailAddress = typeof EmailAddress.Type;
 
 /** A transactional message to deliver to a single recipient. */
 export const EmailMessage = Schema.Struct({

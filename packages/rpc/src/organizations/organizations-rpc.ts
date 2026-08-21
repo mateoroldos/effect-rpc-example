@@ -1,3 +1,4 @@
+import { EmailAddress } from "@effect-template/domain/email-address";
 import {
   Organization,
   OrganizationId,
@@ -79,9 +80,7 @@ export type ListOrganizationPeopleInput =
 
 /** The wire input for inviting an Organization Member. */
 export const InviteMemberInput = Schema.Struct({
-  email: Schema.String.pipe(
-    Schema.check(Schema.isPattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/))
-  ),
+  email: EmailAddress,
   organizationId: OrganizationId,
   role: OrganizationRole,
 });

@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest";
 import { Authorization } from "@effect-template/core/authorization";
 import { OrganizationDirectory } from "@effect-template/core/organization-directory";
 import { OrganizationProvider } from "@effect-template/core/organization-directory/provider";
+import { EmailAddress } from "@effect-template/domain/email-address";
 import {
   OrganizationId,
   OrganizationInvitationId,
@@ -96,7 +97,7 @@ describe("Organizations RPC", () => {
               { invitations: [], members: [] }
             );
             yield* client["Members.Invite"]({
-              email: "invitee@example.com",
+              email: EmailAddress.make("invitee@example.com"),
               organizationId,
               role: "member",
             });
@@ -123,7 +124,7 @@ describe("Organizations RPC", () => {
         Effect.gen(function* () {
           const client = yield* RpcTest.makeClient(group);
           const failure = yield* client["Members.Invite"]({
-            email: "invitee@example.com",
+            email: EmailAddress.make("invitee@example.com"),
             organizationId,
             role: "member",
           }).pipe(Effect.flip);
@@ -172,7 +173,7 @@ describe("Organizations RPC", () => {
         Effect.gen(function* () {
           const client = yield* RpcTest.makeClient(group);
           const failure = yield* client["Members.Invite"]({
-            email: "invitee@example.com",
+            email: EmailAddress.make("invitee@example.com"),
             organizationId,
             role: "owner",
           }).pipe(Effect.flip);

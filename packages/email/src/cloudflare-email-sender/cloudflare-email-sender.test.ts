@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest";
 import { EmailSender } from "@effect-template/core/email";
+import { EmailAddress } from "@effect-template/domain/email-address";
 import { Redacted, Schema } from "effect";
 
 import {
@@ -10,7 +11,7 @@ import {
 const config: CloudflareEmailConfig = {
   accountId: "acc_123",
   apiToken: Redacted.make("secret"),
-  fromAddress: EmailSender.EmailAddress.make("notifications@example.com"),
+  fromAddress: EmailAddress.make("notifications@example.com"),
   fromName: "Example",
 };
 

@@ -1,4 +1,5 @@
 import { assert, describe, it } from "@effect/vitest";
+import { EmailAddress } from "@effect-template/domain/email-address";
 import {
   OrganizationId,
   OrganizationInvitationId,
@@ -33,7 +34,7 @@ const providerLayer = Layer.succeed(
     listInvitations: () =>
       Effect.succeed([
         {
-          email: "invitee@example.com",
+          email: EmailAddress.make("invitee@example.com"),
           id: invitationId,
           role: "member" as const,
           status: "pending" as const,
@@ -75,7 +76,7 @@ describe("OrganizationDirectory", () => {
       Effect.gen(function* () {
         const service = yield* OrganizationDirectory.Service;
         yield* service.invite({
-          email: "invitee@example.com",
+          email: EmailAddress.make("invitee@example.com"),
           organizationId,
           role: "admin",
         });
@@ -89,7 +90,7 @@ describe("OrganizationDirectory", () => {
         const service = yield* OrganizationDirectory.Service;
         const result = yield* Effect.flip(
           service.invite({
-            email: "invitee@example.com",
+            email: EmailAddress.make("invitee@example.com"),
             organizationId,
             role: "admin",
           })

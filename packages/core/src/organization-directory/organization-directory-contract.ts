@@ -1,3 +1,4 @@
+import type { EmailAddress } from "@effect-template/domain/email-address";
 import {
   type Organization,
   type OrganizationId,
@@ -31,7 +32,7 @@ export interface CreateInput {
 
 /** Input for inviting an Organization Member. */
 export interface InviteInput {
-  readonly email: string;
+  readonly email: EmailAddress;
   readonly organizationId: OrganizationId;
   readonly role: OrganizationRole;
 }

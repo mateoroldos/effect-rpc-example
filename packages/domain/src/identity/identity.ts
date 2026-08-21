@@ -1,4 +1,5 @@
 import { Schema } from "effect";
+import { EmailAddress } from "../email-address/email-address.ts";
 
 /** Decodes UUID-v4 strings into branded User identities. */
 export const UserId = Schema.String.pipe(
@@ -17,7 +18,7 @@ export interface Principal extends Schema.Schema.Type<typeof Principal> {}
 
 /** Safe User fields exposed beyond the authentication adapter. */
 export const User = Schema.Struct({
-  email: Schema.String,
+  email: EmailAddress,
   id: UserId,
   name: Schema.String,
 });

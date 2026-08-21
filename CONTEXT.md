@@ -16,6 +16,10 @@ _Avoid_: Bot, Entity, Record
 A person whose identity is managed by Better Auth
 _Avoid_: Account, Identity
 
+**Email Address**:
+A parsed address used to identify or contact a User
+_Avoid_: Email, Recipient
+
 **Principal**:
 The authenticated User identity used to authorize an application operation
 _Avoid_: Session, Actor

@@ -1,4 +1,5 @@
 import { EmailSender } from "@effect-template/core/email";
+import type { EmailAddress } from "@effect-template/domain/email-address";
 import { Effect, Layer, Redacted } from "effect";
 import { HttpClient, HttpClientRequest } from "effect/unstable/http";
 
@@ -7,7 +8,7 @@ export interface CloudflareEmailConfig {
   readonly accountId: string;
   readonly apiToken: Redacted.Redacted<string>;
   /** Address on a domain onboarded via `wrangler email sending enable`. */
-  readonly fromAddress: EmailSender.EmailAddress;
+  readonly fromAddress: EmailAddress;
   /** Display name shown to recipients. */
   readonly fromName: string;
 }

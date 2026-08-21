@@ -58,8 +58,8 @@ it and these arrows in the same change.
 Domain code is pure (no I/O, time, randomness, config). Depend on ports, never
 concrete adapters — only the composition root names implementations. Add a
 capability as new **module directories**: pure shared types in `domain`
-(`agent/`), and each application service beside its port in `core`
-(`agent-directory/`). See **Domain & schemas** for when a type earns `domain`
+(`agent/`, `email-address/`), and each application service beside its port in
+`core` (`agent-directory/`). See **Domain & schemas** for when a type earns `domain`
 versus staying beside its port. Reach for a new **package** only at a real
 boundary — an adapter's heavy dependency, cross-app reuse, or a deployable.
 
@@ -170,9 +170,9 @@ types the system reasons about in more than one place (web renders them, rpc
 serializes them, core and database persist them). Promote a type to `domain`
 when a second independent consumer needs it or it crosses the client/server
 boundary. Keep a pure type **beside its port** when one service is its only
-consumer — purity alone does not earn promotion. `Agent`/`AgentId` live in
-`domain`; `EmailAddress`/`EmailMessage` stay in `core/email/email-sender.ts` as
-the `EmailSender` port's input contract.
+consumer — purity alone does not earn promotion. `Agent`/`AgentId` and the
+shared `EmailAddress` live in `domain`; `EmailMessage` stays in
+`core/email/email-sender.ts` as the `EmailSender` port's input contract.
 
 ## Full-stack RPC feature
 

@@ -138,6 +138,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@effect-template/core": "workspace:*",
+        "@effect-template/domain": "workspace:*",
         "effect": "catalog:",
       },
       "devDependencies": {

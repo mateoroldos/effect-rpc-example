@@ -1,4 +1,5 @@
 import { Schema } from "effect";
+import { EmailAddress } from "../email-address/email-address.ts";
 import { User } from "../identity/identity.ts";
 
 /** Decodes UUID-v4 strings into branded Organization identities. */
@@ -101,7 +102,7 @@ export interface OrganizationMember
 
 /** A pending invitation visible to Organization administrators. */
 export const OrganizationInvitation = Schema.Struct({
-  email: Schema.String,
+  email: EmailAddress,
   id: OrganizationInvitationId,
   role: OrganizationRole,
   status: Schema.Literals(["pending", "accepted", "rejected", "canceled"]),

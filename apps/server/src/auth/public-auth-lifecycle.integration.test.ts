@@ -6,6 +6,7 @@ import { OrganizationDirectory } from "@effect-template/core/organization-direct
 import { AgentStorePostgres } from "@effect-template/database/agents/postgres";
 import { DatabasePostgres } from "@effect-template/database/postgres";
 import { AgentName } from "@effect-template/domain/agent";
+import { EmailAddress } from "@effect-template/domain/email-address";
 import {
   OrganizationName,
   OrganizationSlug,
@@ -109,7 +110,7 @@ it.effect("public authentication and Organization lifecycle", () =>
           slug: OrganizationSlug.make("analytical-engines"),
         });
         yield* ownerClient["Members.Invite"]({
-          email: "grace@example.com",
+          email: EmailAddress.make("grace@example.com"),
           organizationId: organization.id,
           role: "member",
         });

@@ -1,7 +1,8 @@
 import { EmailSender } from "@effect-template/core/email";
+import { EmailAddress } from "@effect-template/domain/email-address";
 import { Context, Effect, Layer, Schema } from "effect";
 
-const parseEmailAddress = Schema.decodeUnknownEffect(EmailSender.EmailAddress);
+const parseEmailAddress = Schema.decodeUnknownEffect(EmailAddress);
 
 const escapeHtml = (value: string) =>
   value

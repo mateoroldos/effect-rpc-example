@@ -1,4 +1,4 @@
-import { EmailSender } from "@effect-template/core/email";
+import { EmailAddress } from "@effect-template/domain/email-address";
 import { Config, Effect, Option, Redacted, Schema, SchemaIssue } from "effect";
 
 type Environment = "development" | "production";
@@ -88,10 +88,7 @@ const loadEmail = (environment: Environment) =>
       _tag: "Cloudflare",
       accountId: yield* Config.nonEmptyString("CLOUDFLARE_ACCOUNT_ID"),
       apiToken: apiToken.value,
-      fromAddress: yield* Config.schema(
-        EmailSender.EmailAddress,
-        "EMAIL_FROM_ADDRESS"
-      ),
+      fromAddress: yield* Config.schema(EmailAddress, "EMAIL_FROM_ADDRESS"),
       fromName: yield* Config.nonEmptyString("EMAIL_FROM_NAME").pipe(
         Config.withDefault("effect-template")
       ),
