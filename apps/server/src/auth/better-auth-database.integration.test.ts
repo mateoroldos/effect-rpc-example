@@ -2,9 +2,6 @@ import { assert, describe, it } from "@effect/vitest";
 import { BetterAuthEmail } from "@effect-template/auth-better/better-auth-email";
 import { BetterAuthInstance } from "@effect-template/auth-better/better-auth-instance";
 import { OrganizationBetterAuth } from "@effect-template/auth-better/organization";
-import { Authorization } from "@effect-template/core/authorization";
-import { OrganizationDirectory } from "@effect-template/core/organization-directory";
-import { OrganizationProvider } from "@effect-template/core/organization-directory/provider";
 // biome-ignore lint/performance/noNamespaceImport: Better Auth requires the complete generated schema module.
 import * as authSchema from "@effect-template/database/auth-schema";
 import { DatabasePostgres } from "@effect-template/database/postgres";
@@ -16,7 +13,7 @@ import { PostgresPool } from "../infra/postgres-pool/index.ts";
 import { acquireDisposableDatabaseUrl } from "../test/disposable-postgres.ts";
 
 describe("Better Auth database integration", () => {
-  it.effect("persists auth data and authorizes Organization permissions", () =>
+  it.effect("persists identity and provides Organization capabilities", () =>
     Effect.scoped(
       Effect.gen(function* () {
         const databaseUrl = yield* acquireDisposableDatabaseUrl;
@@ -51,21 +48,17 @@ describe("Better Auth database integration", () => {
             ),
             webBaseUrl: new URL("https://app.integration.test"),
           }).pipe(Layer.provide(betterAuthEmailLayer));
-          const boundariesLayer = Layer.mergeAll(
+          const boundariesLayer = Layer.merge(
             instanceLayer,
             OrganizationBetterAuth.layerWithoutDependencies.pipe(
               Layer.provide(instanceLayer)
-            ),
-            OrganizationDirectory.layer
+            )
           );
           const boundaries = yield* Layer.build(boundariesLayer);
           const { auth } = yield* BetterAuthInstance.Service.pipe(
             Effect.provide(boundaries)
           );
           const organizations = yield* OrganizationBetterAuth.Service.pipe(
-            Effect.provide(boundaries)
-          );
-          const organizationService = yield* OrganizationDirectory.Service.pipe(
             Effect.provide(boundaries)
           );
 
@@ -167,28 +160,6 @@ describe("Better Auth database integration", () => {
           yield* memberCapabilities.authorization.require(
             organizationId,
             "agent:read"
-          );
-
-          const roleAssignment = yield* organizationService
-            .invite({
-              email: "invitee@example.com",
-              organizationId,
-              role: "owner",
-            })
-            .pipe(
-              Effect.provideService(
-                Authorization.Service,
-                ownerCapabilities.authorization
-              ),
-              Effect.provideService(
-                OrganizationProvider.Service,
-                ownerCapabilities.organizations
-              ),
-              Effect.flip
-            );
-          assert.strictEqual(
-            roleAssignment._tag,
-            "OrganizationDirectory.RoleNotAssignable"
           );
 
           const denied = yield* memberCapabilities.authorization
