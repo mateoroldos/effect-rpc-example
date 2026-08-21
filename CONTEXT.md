@@ -53,9 +53,9 @@ generic ones (`rules/no-vague-names.grit`): a class/interface/type named
 lint error.
 
 **Directory**:
-A service that owns a collection and the policy over it. Here, the registry of
-Agents — not a filesystem.
-_Avoid_: Registry, Manager, Repository
+A service that owns a collection and the policy over it. Here, the directories
+of Agents and Organizations — not filesystems.
+_Avoid_: Registry, Manager, Repository, Service
 
 **Store**:
 The persistence boundary a service depends on to remember its data. The Store
