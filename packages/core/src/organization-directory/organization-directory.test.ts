@@ -30,18 +30,16 @@ const providerLayer = Layer.succeed(
     find: () => Effect.succeed({ organization, role: "owner" as const }),
     invite: () => Effect.void,
     list: Effect.succeed([organization]),
-    listPeople: () =>
-      Effect.succeed({
-        invitations: [
-          {
-            email: "invitee@example.com",
-            id: invitationId,
-            role: "member" as const,
-            status: "pending" as const,
-          },
-        ],
-        members: [],
-      }),
+    listInvitations: () =>
+      Effect.succeed([
+        {
+          email: "invitee@example.com",
+          id: invitationId,
+          role: "member" as const,
+          status: "pending" as const,
+        },
+      ]),
+    listMembers: () => Effect.succeed([]),
   })
 );
 

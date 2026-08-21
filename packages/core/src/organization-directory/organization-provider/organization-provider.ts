@@ -1,7 +1,9 @@
 import type {
   Organization,
   OrganizationId,
+  OrganizationInvitation,
   OrganizationInvitationId,
+  OrganizationMember,
 } from "@effect-template/domain/organization";
 import { Context, type Effect } from "effect";
 import type { Authorization } from "../../authorization/index.ts";
@@ -11,33 +13,66 @@ import type {
   InvitationNotFound,
   InviteInput,
   Malformed,
-  OrganizationPeople,
   Unavailable,
   VisibleOrganization,
-} from "../organization-directory.ts";
+} from "../organization-directory-contract.ts";
 
 /** Request-bound Organization operations implemented by an external provider. */
 export interface Interface {
   readonly acceptInvitation: (
     invitationId: OrganizationInvitationId
-  ) => Effect.Effect<void, InvitationNotFound | Unavailable>;
+  ) => Effect.Effect<
+    void,
+    Authorization.Unauthenticated | InvitationNotFound | Unavailable
+  >;
   readonly create: (
     input: CreateInput
-  ) => Effect.Effect<Organization, Conflict | Malformed | Unavailable>;
+  ) => Effect.Effect<
+    Organization,
+    Authorization.Unauthenticated | Conflict | Malformed | Unavailable
+  >;
   readonly find: (
     organizationId: OrganizationId
   ) => Effect.Effect<
     VisibleOrganization,
-    Authorization.NotMember | Malformed | Unavailable
+    | Authorization.Unauthenticated
+    | Authorization.NotMember
+    | Malformed
+    | Unavailable
   >;
-  readonly invite: (input: InviteInput) => Effect.Effect<void, Unavailable>;
+  readonly invite: (
+    input: InviteInput
+  ) => Effect.Effect<
+    void,
+    | Authorization.Unauthenticated
+    | Authorization.NotMember
+    | Authorization.PermissionDenied
+    | Unavailable
+  >;
   readonly list: Effect.Effect<
     readonly Organization[],
-    Malformed | Unavailable
+    Authorization.Unauthenticated | Malformed | Unavailable
   >;
-  readonly listPeople: (
+  readonly listInvitations: (
     organizationId: OrganizationId
-  ) => Effect.Effect<OrganizationPeople, Malformed | Unavailable>;
+  ) => Effect.Effect<
+    readonly OrganizationInvitation[],
+    | Authorization.Unauthenticated
+    | Authorization.NotMember
+    | Authorization.PermissionDenied
+    | Malformed
+    | Unavailable
+  >;
+  readonly listMembers: (
+    organizationId: OrganizationId
+  ) => Effect.Effect<
+    readonly OrganizationMember[],
+    | Authorization.Unauthenticated
+    | Authorization.NotMember
+    | Authorization.PermissionDenied
+    | Malformed
+    | Unavailable
+  >;
 }
 
 /** External Organization provider bound to the current request. */

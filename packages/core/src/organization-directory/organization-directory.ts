@@ -1,55 +1,27 @@
 import {
   type Organization,
   type OrganizationId,
-  type OrganizationInvitation,
-  OrganizationInvitationId,
-  type OrganizationMember,
-  type OrganizationName,
-  OrganizationRole,
-  type OrganizationSlug,
+  type OrganizationInvitationId,
+  organizationRoleAllows,
   organizationRoleCanAssign,
 } from "@effect-template/domain/organization";
-import { Context, Effect, Layer, Schema } from "effect";
+import { Context, Effect, Layer } from "effect";
 import { Authorization } from "../authorization/index.ts";
+import type {
+  Conflict,
+  CreateInput,
+  InvitationNotFound,
+  InviteInput,
+  Malformed,
+  OrganizationPeople,
+  Unavailable,
+  VisibleOrganization,
+} from "./organization-directory-contract.ts";
+import { RoleNotAssignable } from "./organization-directory-contract.ts";
 import { OrganizationProvider } from "./organization-provider/index.ts";
 
-/** Organization operations safe to include in diagnostics. */
-export const Operation = Schema.Literals([
-  "list",
-  "find",
-  "create",
-  "listPeople",
-  "invite",
-  "acceptInvitation",
-]);
-
-/** Organization operation safe to include in diagnostics. */
-export type Operation = typeof Operation.Type;
-
-/** Input for creating an Organization. */
-export interface CreateInput {
-  readonly name: OrganizationName;
-  readonly slug: OrganizationSlug;
-}
-
-/** Input for inviting an Organization Member. */
-export interface InviteInput {
-  readonly email: string;
-  readonly organizationId: OrganizationId;
-  readonly role: OrganizationRole;
-}
-
-/** Organization visible to the current Principal and their Role in it. */
-export interface VisibleOrganization {
-  readonly organization: Organization;
-  readonly role: OrganizationRole;
-}
-
-/** Members and Invitations visible to the current Principal. */
-export interface OrganizationPeople {
-  readonly invitations: readonly OrganizationInvitation[];
-  readonly members: readonly OrganizationMember[];
-}
+// biome-ignore lint/performance/noBarrelFile: Keeps the OrganizationDirectory contract behind its canonical module namespace.
+export * from "./organization-directory-contract.ts";
 
 /** Application operations for maintaining Organizations, Members, and Invitations. */
 export interface Interface {
@@ -164,8 +136,13 @@ const listPeople = Effect.fn("OrganizationDirectory.listPeople")(function* (
 ) {
   const authorization = yield* Authorization.Service;
   const provider = yield* OrganizationProvider.Service;
-  yield* authorization.require(organizationId, "member:read");
-  return yield* provider.listPeople(organizationId);
+  const member = yield* authorization.require(organizationId, "member:read");
+  const members = yield* provider.listMembers(organizationId);
+  if (!organizationRoleAllows(member.role, "member:invite")) {
+    return { invitations: [], members };
+  }
+  const invitations = yield* provider.listInvitations(organizationId);
+  return { invitations, members };
 });
 
 /** Provides the stable Organization application workflows. */
@@ -173,33 +150,3 @@ export const layer = Layer.succeed(
   Service,
   Service.of({ acceptInvitation, create, find, invite, list, listPeople })
 );
-
-/** Indicates that an Organization operation is unavailable. */
-export class Unavailable extends Schema.TaggedErrorClass<Unavailable>()(
-  "OrganizationDirectory.Unavailable",
-  { cause: Schema.Defect(), operation: Operation }
-) {}
-
-/** Indicates that a provider returned an invalid Organization representation. */
-export class Malformed extends Schema.TaggedErrorClass<Malformed>()(
-  "OrganizationDirectory.Malformed",
-  { operation: Operation }
-) {}
-
-/** Indicates that an Organization value is already used. */
-export class Conflict extends Schema.TaggedErrorClass<Conflict>()(
-  "OrganizationDirectory.Conflict",
-  { field: Schema.Literal("slug") }
-) {}
-
-/** Indicates that an Invitation is missing or inaccessible to the Principal. */
-export class InvitationNotFound extends Schema.TaggedErrorClass<InvitationNotFound>()(
-  "OrganizationDirectory.InvitationNotFound",
-  { invitationId: OrganizationInvitationId }
-) {}
-
-/** Indicates that the current Member cannot assign the requested Role. */
-export class RoleNotAssignable extends Schema.TaggedErrorClass<RoleNotAssignable>()(
-  "OrganizationDirectory.RoleNotAssignable",
-  { role: OrganizationRole }
-) {}
