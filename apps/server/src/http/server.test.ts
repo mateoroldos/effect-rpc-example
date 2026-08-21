@@ -3,6 +3,9 @@ import { assert, describe, it } from "@effect/vitest";
 import { BetterAuthHttp } from "@effect-template/auth-better/better-auth-http";
 import { AgentDirectory } from "@effect-template/core/agent-directory";
 import { AgentStore } from "@effect-template/core/agent-directory/store";
+import { Authorization } from "@effect-template/core/authorization";
+import { OrganizationDirectory } from "@effect-template/core/organization-directory";
+import { OrganizationProvider } from "@effect-template/core/organization-directory/provider";
 import { AgentName } from "@effect-template/domain/agent";
 import { OrganizationId } from "@effect-template/domain/organization";
 import { AgentsRpc } from "@effect-template/rpc/agents";
@@ -10,9 +13,10 @@ import { Crypto, Effect, Layer } from "effect";
 import { HttpClient, HttpClientRequest } from "effect/unstable/http";
 import { RpcClient, RpcSerialization } from "effect/unstable/rpc";
 
-import { AuthorizationRpc } from "./auth/authorization-rpc/index.ts";
-import { httpServerLayer } from "./http/server.ts";
-import { agentsHandlersLayer } from "./rpc/agents.ts";
+import { BetterAuthRpc } from "../auth/better-auth-rpc/index.ts";
+import { agentsHandlersLayer } from "../rpc/agents.ts";
+import { organizationsHandlersLayer } from "../rpc/organizations.ts";
+import { httpServerLayer } from "./server.ts";
 
 const organizationId = OrganizationId.make(
   "123e4567-e89b-42d3-a456-426614174001"
@@ -29,6 +33,32 @@ const agentsRpcHandlersTestLayer = agentsHandlersLayer.pipe(
   Layer.provide(AgentStore.layerMemory),
   Layer.provide(cryptoLayer)
 );
+const unavailableService = () =>
+  new OrganizationDirectory.Unavailable({
+    cause: new Error("Organization service unavailable in Agent-only test"),
+    operation: "list",
+  });
+const organizationsRpcHandlersTestLayer = organizationsHandlersLayer.pipe(
+  Layer.provide(OrganizationDirectory.layer)
+);
+const organizationProvider = OrganizationProvider.Service.of({
+  acceptInvitation: () => Effect.fail(unavailableService()),
+  create: () => Effect.fail(unavailableService()),
+  find: () => Effect.fail(unavailableService()),
+  invite: () => Effect.fail(unavailableService()),
+  list: Effect.fail(unavailableService()),
+  listInvitations: () => Effect.fail(unavailableService()),
+  listMembers: () => Effect.fail(unavailableService()),
+});
+const betterAuthRpcLayer = Layer.succeed(
+  BetterAuthRpc.Middleware,
+  BetterAuthRpc.Middleware.of((effect) =>
+    effect.pipe(
+      Effect.provideService(Authorization.Service, Authorization.allowAll),
+      Effect.provideService(OrganizationProvider.Service, organizationProvider)
+    )
+  )
+);
 const authHttpLayer = Layer.succeed(
   BetterAuthHttp.Service,
   BetterAuthHttp.Service.of({
@@ -37,8 +67,10 @@ const authHttpLayer = Layer.succeed(
 );
 const webOrigin = "https://app.example.com";
 const serverLayer = httpServerLayer(webOrigin).pipe(
-  Layer.provide(agentsRpcHandlersTestLayer),
-  Layer.provide(AuthorizationRpc.layerAllowAll),
+  Layer.provide(
+    Layer.merge(agentsRpcHandlersTestLayer, organizationsRpcHandlersTestLayer)
+  ),
+  Layer.provide(betterAuthRpcLayer),
   Layer.provide(authHttpLayer)
 );
 const clientProtocolLayer = RpcClient.layerProtocolHttp({
@@ -50,7 +82,7 @@ const endToEndLayer = Layer.merge(serverLayer, clientProtocolLayer).pipe(
   Layer.provideMerge(NodeHttpServer.layerTest)
 );
 
-describe("server", () => {
+describe("HTTP server", () => {
   it.layer(endToEndLayer)("HTTP RPC", (test) => {
     test.effect("creates and retrieves an Agent", () =>
       Effect.gen(function* () {

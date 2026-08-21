@@ -1,7 +1,10 @@
 import { assert, describe, it } from "@effect/vitest";
-import { AuthorizationBetterAuth } from "@effect-template/auth-better/authorization";
 import { BetterAuthEmail } from "@effect-template/auth-better/better-auth-email";
 import { BetterAuthInstance } from "@effect-template/auth-better/better-auth-instance";
+import { OrganizationBetterAuth } from "@effect-template/auth-better/organization";
+import { Authorization } from "@effect-template/core/authorization";
+import { OrganizationDirectory } from "@effect-template/core/organization-directory";
+import { OrganizationProvider } from "@effect-template/core/organization-directory/provider";
 // biome-ignore lint/performance/noNamespaceImport: Better Auth requires the complete generated schema module.
 import * as authSchema from "@effect-template/database/auth-schema";
 import { DatabasePostgres } from "@effect-template/database/postgres";
@@ -48,17 +51,21 @@ describe("Better Auth database integration", () => {
             ),
             webBaseUrl: new URL("https://app.integration.test"),
           }).pipe(Layer.provide(betterAuthEmailLayer));
-          const boundariesLayer = Layer.merge(
+          const boundariesLayer = Layer.mergeAll(
             instanceLayer,
-            AuthorizationBetterAuth.layerWithoutDependencies.pipe(
+            OrganizationBetterAuth.layerWithoutDependencies.pipe(
               Layer.provide(instanceLayer)
-            )
+            ),
+            OrganizationDirectory.layer
           );
           const boundaries = yield* Layer.build(boundariesLayer);
           const { auth } = yield* BetterAuthInstance.Service.pipe(
             Effect.provide(boundaries)
           );
-          const authorization = yield* AuthorizationBetterAuth.Service.pipe(
+          const organizations = yield* OrganizationBetterAuth.Service.pipe(
+            Effect.provide(boundaries)
+          );
+          const organizationService = yield* OrganizationDirectory.Service.pipe(
             Effect.provide(boundaries)
           );
 
@@ -134,24 +141,64 @@ describe("Better Auth database integration", () => {
           );
 
           const organizationId = OrganizationId.make(organization.id);
-          yield* authorization.require(
-            ownerHeaders,
+          const ownerCapabilities = organizations.forHeaders(ownerHeaders);
+          assert.isTrue(
+            (yield* ownerCapabilities.organizations.list).some(
+              (candidate) => candidate.id === organizationId
+            )
+          );
+          const visibleOrganization =
+            yield* ownerCapabilities.organizations.find(organizationId);
+          assert.strictEqual(
+            visibleOrganization.organization.id,
+            organizationId
+          );
+          assert.strictEqual(visibleOrganization.role, "owner");
+          assert.lengthOf(
+            yield* ownerCapabilities.organizations.listMembers(organizationId),
+            2
+          );
+
+          yield* ownerCapabilities.authorization.require(
             organizationId,
             "agent:create"
           );
-          yield* authorization.require(
-            memberHeaders,
+          const memberCapabilities = organizations.forHeaders(memberHeaders);
+          yield* memberCapabilities.authorization.require(
             organizationId,
             "agent:read"
           );
 
-          const forbidden = yield* authorization
-            .require(memberHeaders, organizationId, "agent:create")
-            .pipe(Effect.flip);
-          assert.strictEqual(forbidden._tag, "Authorization.Forbidden");
+          const roleAssignment = yield* organizationService
+            .invite({
+              email: "invitee@example.com",
+              organizationId,
+              role: "owner",
+            })
+            .pipe(
+              Effect.provideService(
+                Authorization.Service,
+                ownerCapabilities.authorization
+              ),
+              Effect.provideService(
+                OrganizationProvider.Service,
+                ownerCapabilities.organizations
+              ),
+              Effect.flip
+            );
+          assert.strictEqual(
+            roleAssignment._tag,
+            "OrganizationDirectory.RoleNotAssignable"
+          );
 
-          const unauthenticated = yield* authorization
-            .require(new Headers(), organizationId, "agent:read")
+          const denied = yield* memberCapabilities.authorization
+            .require(organizationId, "agent:create")
+            .pipe(Effect.flip);
+          assert.strictEqual(denied._tag, "Authorization.PermissionDenied");
+
+          const unauthenticated = yield* organizations
+            .forHeaders(new Headers())
+            .authorization.require(organizationId, "agent:read")
             .pipe(Effect.flip);
           assert.strictEqual(
             unauthenticated._tag,

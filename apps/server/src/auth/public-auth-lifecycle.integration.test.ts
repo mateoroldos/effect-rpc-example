@@ -1,6 +1,9 @@
 import { NodeCrypto, NodeHttpServer } from "@effect/platform-node";
 import { assert, it } from "@effect/vitest";
+import { AgentDirectory } from "@effect-template/core/agent-directory";
 import { EmailSender } from "@effect-template/core/email";
+import { OrganizationDirectory } from "@effect-template/core/organization-directory";
+import { AgentStorePostgres } from "@effect-template/database/agents/postgres";
 import { DatabasePostgres } from "@effect-template/database/postgres";
 import { AgentName } from "@effect-template/domain/agent";
 import { OrganizationId } from "@effect-template/domain/organization";
@@ -15,10 +18,18 @@ import { RpcClient, RpcSerialization } from "effect/unstable/rpc";
 import { httpServerLayer } from "../http/server.ts";
 import { effectDatabaseLayer } from "../infra/database.ts";
 import { PostgresPool } from "../infra/postgres-pool/index.ts";
-import { agentsHandlersLayerPostgres } from "../rpc/agents.ts";
+import { agentsHandlersLayer } from "../rpc/agents.ts";
+import { organizationsHandlersLayer } from "../rpc/organizations.ts";
 import { acquireDisposableDatabaseUrl } from "../test/disposable-postgres.ts";
 import { authLayer } from "./layer.ts";
 
+const rpcHandlersLayer = Layer.merge(
+  agentsHandlersLayer.pipe(
+    Layer.provide(AgentDirectory.layerWithoutDependencies),
+    Layer.provide(AgentStorePostgres.layer)
+  ),
+  organizationsHandlersLayer.pipe(Layer.provide(OrganizationDirectory.layer))
+);
 const OrganizationResponse = Schema.Struct({ id: OrganizationId });
 const InvitationResponse = Schema.Struct({ id: Schema.String });
 const apiBaseUrl = new URL("https://api.example.com");
@@ -39,7 +50,7 @@ it.effect("public authentication and Organization lifecycle", () =>
         })
       );
       const serverLayer = httpServerLayer("http://localhost:5173").pipe(
-        Layer.provide(agentsHandlersLayerPostgres),
+        Layer.provide(rpcHandlersLayer),
         Layer.provide(
           authLayer({
             origins: {

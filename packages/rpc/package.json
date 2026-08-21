@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./agents": "./src/agents/index.ts",
+    "./organizations": "./src/organizations/index.ts",
     "./rpc": "./src/rpc/index.ts"
   },
   "scripts": {
