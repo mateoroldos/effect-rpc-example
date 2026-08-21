@@ -9,7 +9,9 @@
 
 <OrganizationShell
   {children}
-  organization={await getOrganization({
-    organizationId: page.params.organizationId ?? "",
-  })}
+  organization={(
+    await getOrganization({
+      organizationId: page.params.organizationId ?? "",
+    })
+  ).organization}
 />

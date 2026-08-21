@@ -19,7 +19,10 @@ export const getAgents = query(
       (failure) =>
         Match.value(failure).pipe(
           Match.tagsExhaustive({
-            "AgentsRpc.Forbidden": () => error(404, "Organization not found"),
+            "AgentsRpc.OrganizationNotFound": () =>
+              error(404, "Organization not found"),
+            "AgentsRpc.PermissionDenied": () =>
+              error(403, "You do not have permission to view Agents."),
             "AgentsRpc.Unauthenticated": () =>
               error(401, "Sign in to continue."),
             "AgentsRpc.Unavailable": () =>
@@ -39,7 +42,10 @@ export const createAgent = form(
       (failure) =>
         Match.value(failure).pipe(
           Match.tagsExhaustive({
-            "AgentsRpc.Forbidden": () => error(404, "Organization not found"),
+            "AgentsRpc.OrganizationNotFound": () =>
+              error(404, "Organization not found"),
+            "AgentsRpc.PermissionDenied": () =>
+              error(403, "You do not have permission to create Agents."),
             "AgentsRpc.Unauthenticated": () =>
               error(401, "Sign in to continue."),
             "AgentsRpc.Unavailable": () =>
