@@ -47,13 +47,13 @@ dependency cycle. The allowed-imports table there is the source of truth — edi
 it and these arrows in the same change.
 
 - `packages/domain` — pure shared vocabulary (`Agent`, `AgentId`, `AgentName`); depends on nothing; consumed by web, rpc, core, and database.
-- `packages/auth-better` — Better Auth adapter implementing identity and Organization authorization boundaries.
-- `packages/core` — application services and the ports they depend on (domain types now live in `domain`).
+- `packages/auth-better` — Better Auth adapter implementing identity and request-bound Organization authorization/provider ports.
+- `packages/core` — stable application services and their ports (domain types live in `domain`), including `OrganizationDirectory`, `Authorization`, and `OrganizationProvider`.
 - `packages/database` — PostgreSQL adapters implementing core ports, drizzle config, schemas, and migrations.
 - `packages/observability` — reusable server telemetry adapter; applications choose its configuration.
 - `packages/rpc` — transport-independent RPC contracts. `apps/server` decorates those contracts with server middleware and supplies the concrete handlers as the inbound adapter.
 - `apps/server` — API composition root; provides concrete database, RPC, and telemetry Layers.
-- `apps/web` — web composition root and traced server-side RPC client.
+- `apps/web` — web composition root and traced server-side application RPC client; direct Better Auth HTTP is limited to identity lifecycle.
 
 Domain code is pure (no I/O, time, randomness, config). Depend on ports, never
 concrete adapters — only the composition root names implementations. Add a
@@ -145,11 +145,11 @@ themselves. Package subpaths point to `index.ts`. Relative imports of a module
 boundary include `/index.ts`; package consumers use the exported subpath.
 `layerWithoutDependencies` leaves requirements unfilled for composition; `layer`
 is production-ready. Yield stable deps while building; yield request-scoped
-values inside the method that uses them. Server middleware captures credentials
-and provides `Authorization` directly; handlers call Directories without
-request-composition helpers. Each Directory selects and requires its own
-Organization Permission before Store access; each Store repeats `OrganizationId`
-scope independently. Non-RPC entry points provide the same core capability from
+values inside the method that uses them. Server middleware captures credentials and provides request-scoped
+`Authorization` and `OrganizationProvider` directly. Handlers call stable
+application services without request-composition helpers. Each service selects
+and requires its own Organization Permission before protected access; each Store
+repeats `OrganizationId` scope independently. Non-RPC entry points provide the same core capability from
 their own command context.
 
 ## Domain & schemas

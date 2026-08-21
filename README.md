@@ -30,12 +30,12 @@ server → auth-better, core, rpc, database
 | Package | Responsibility |
 |---|---|
 | `packages/domain` | Pure shared vocabulary — branded domain types with no dependencies. |
-| `packages/auth-better` | Better Auth adapter for identity and Organization authorization. |
-| `packages/core` | Application services and the ports they depend on. |
+| `packages/auth-better` | Better Auth adapter for identity, Organization operations, and authorization. |
+| `packages/core` | Stable application services and ports, including OrganizationDirectory, Authorization, and OrganizationProvider. |
 | `packages/database` | PostgreSQL lifecycle and adapters implementing core ports. |
 | `packages/rpc` | Transport-independent RPC contracts; handlers live in `apps/server`. |
 | `apps/server` | Composition root — provides every Layer and launches the API process. |
-| `apps/web` | SvelteKit UI — remote functions call the typed Agents RPC server-side. |
+| `apps/web` | SvelteKit UI — remote functions call the typed application RPC server-side. |
 
 The composition root wires the graph in one place, and Effect memoizes shared
 infrastructure (database pool, config, clock) so it is built exactly once:
@@ -50,6 +50,8 @@ appLayer
 
 Svelte page (Portless-assigned port)
 └─ remote function ── Effect RPC client ── HTTP /rpc ── appLayer
+   ├─ AgentDirectory ── AgentStore (Postgres adapter)
+   └─ OrganizationDirectory ── Authorization + OrganizationProvider ── OrganizationBetterAuth
 ```
 
 ## Quick start
@@ -110,11 +112,20 @@ The web and API are one trusted application boundary on sibling HTTPS origins:
 
 ```text
 Browser  https://app.<APP_DOMAIN>
-  ├─ Better Auth HTTP ───────────────────────→ https://api.<APP_DOMAIN>
+  ├─ Better Auth identity HTTP ──────────────→ https://api.<APP_DOMAIN>
   └─ SvelteKit remote function (SSR/BFF)
-       ├─ Better Auth HTTP + caller cookie ──→ https://api.<APP_DOMAIN>
+       ├─ session HTTP + caller cookie ──────→ https://api.<APP_DOMAIN>
        └─ application RPC + caller cookie ───→ https://api.<APP_DOMAIN>/rpc
+          ├─ Agent operations
+          └─ Organization, Member, and Invitation operations
 ```
+
+Direct Better Auth HTTP is reserved for identity lifecycle: sign-in, sign-out,
+sign-up, session refresh, email verification, password recovery, and OAuth
+callbacks. Organization, Member, and Invitation operations cross typed
+application RPC into the stable core `OrganizationDirectory`. Server middleware
+uses `OrganizationBetterAuth` to provide request-scoped `Authorization` and
+`OrganizationProvider` capabilities.
 
 The API owns Better Auth session validation and Organization authorization. The
 web server never turns route or client state into identity; it forwards the
