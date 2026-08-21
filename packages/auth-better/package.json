@@ -7,7 +7,7 @@
     "./better-auth-email": "./src/better-auth-email/index.ts",
     "./better-auth-http": "./src/better-auth-http/index.ts",
     "./better-auth-instance": "./src/better-auth-instance/index.ts",
-    "./authorization": "./src/authorization-better-auth/index.ts"
+    "./organization": "./src/organization-better-auth/index.ts"
   },
   "scripts": {
     "check-types": "tsc"
