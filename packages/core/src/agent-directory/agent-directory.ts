@@ -17,7 +17,8 @@ export interface Interface {
     Agent,
     | IdGenerationError
     | Authorization.Unauthenticated
-    | Authorization.Forbidden
+    | Authorization.NotMember
+    | Authorization.PermissionDenied
     | Authorization.Unavailable
     | AgentStore.PersistenceError,
     Authorization.Service
@@ -30,7 +31,8 @@ export interface Interface {
     Agent,
     | NotFound
     | Authorization.Unauthenticated
-    | Authorization.Forbidden
+    | Authorization.NotMember
+    | Authorization.PermissionDenied
     | Authorization.Unavailable
     | AgentStore.PersistenceError,
     Authorization.Service
@@ -41,7 +43,8 @@ export interface Interface {
   ) => Effect.Effect<
     readonly Agent[],
     | Authorization.Unauthenticated
-    | Authorization.Forbidden
+    | Authorization.NotMember
+    | Authorization.PermissionDenied
     | Authorization.Unavailable
     | AgentStore.PersistenceError,
     Authorization.Service

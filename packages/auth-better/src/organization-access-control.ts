@@ -1,7 +1,7 @@
-import { Authorization } from "@effect-template/core/authorization";
-import type {
-  OrganizationPermission,
-  OrganizationRole,
+import {
+  type OrganizationPermission,
+  type OrganizationRole,
+  permissionsByOrganizationRole,
 } from "@effect-template/domain/organization";
 import { createAccessControl } from "better-auth/plugins";
 import {
@@ -17,16 +17,17 @@ const statements = {
 /** Better Auth access control extended with application Organization Permissions. */
 export const accessControl = createAccessControl(statements);
 
-/** Translates application Organization Permissions to Better Auth resources and actions. */
-export const betterAuthPermissions = {
+const betterAuthPermissions = {
   "agent:create": { agent: ["create"] },
   "agent:read": { agent: ["read"] },
+  "member:invite": { agent: [] },
+  "member:read": { agent: [] },
 } satisfies Record<
   OrganizationPermission,
-  { readonly agent: Array<"create" | "read"> }
+  { readonly agent?: Array<"create" | "read"> }
 >;
 
-/** Better Auth roles configured from the application's Organization role policy. */
+/** Better Auth Roles configured from the application's Organization Role policy. */
 export const roles = {
   admin: accessControl.newRole({
     ...defaultRoles.admin.statements,
@@ -44,8 +45,8 @@ export const roles = {
 
 function betterAuthStatementsFor(role: OrganizationRole) {
   return {
-    agent: Authorization.permissionsByOrganizationRole[role].flatMap(
-      (permission) => betterAuthPermissions[permission].agent
+    agent: permissionsByOrganizationRole[role].flatMap(
+      (permission) => betterAuthPermissions[permission].agent ?? []
     ),
   };
 }

@@ -1,6 +1,6 @@
 import {
   OrganizationId,
-  type OrganizationPermission,
+  OrganizationPermission,
   type OrganizationRole,
 } from "@effect-template/domain/organization";
 import { Context, Effect, Layer, Schema } from "effect";
@@ -9,12 +9,21 @@ import { Context, Effect, Layer, Schema } from "effect";
  * Request-scoped authorization for the current authenticated Principal.
  * @effect-leakable-service
  */
+/** Membership proven while requiring an Organization Permission. */
+export interface AuthorizedMember {
+  readonly organizationId: OrganizationId;
+  readonly role: OrganizationRole;
+}
+
 export interface Interface {
-  /** Requires the current Principal to hold a permission in the Organization. */
+  /** Requires a Permission and returns the authorized Organization membership. */
   readonly require: (
     organizationId: OrganizationId,
     permission: OrganizationPermission
-  ) => Effect.Effect<void, Unauthenticated | Forbidden | Unavailable>;
+  ) => Effect.Effect<
+    AuthorizedMember,
+    NotMember | PermissionDenied | Unauthenticated | Unavailable
+  >;
 }
 
 /** Authorizes Organization operations for the current request or command. */
@@ -28,31 +37,31 @@ export class Unauthenticated extends Schema.TaggedErrorClass<Unauthenticated>()(
   {}
 ) {}
 
-/** Indicates that the current Principal lacks the requested permission. */
-export class Forbidden extends Schema.TaggedErrorClass<Forbidden>()(
-  "Authorization.Forbidden",
+/** Indicates that the current Principal is not a Member of the Organization. */
+export class NotMember extends Schema.TaggedErrorClass<NotMember>()(
+  "Authorization.NotMember",
   { organizationId: OrganizationId }
 ) {}
 
-/** Indicates that an Organization permission could not be determined. */
+/** Indicates that the current Member lacks the requested Organization Permission. */
+export class PermissionDenied extends Schema.TaggedErrorClass<PermissionDenied>()(
+  "Authorization.PermissionDenied",
+  { organizationId: OrganizationId, permission: OrganizationPermission }
+) {}
+
+/** Indicates that an Organization Permission could not be determined. */
 export class Unavailable extends Schema.TaggedErrorClass<Unavailable>()(
   "Authorization.Unavailable",
   { cause: Schema.Defect() }
 ) {}
 
-/** Application permissions granted by each Organization role. */
-export const permissionsByOrganizationRole = {
-  admin: ["agent:create", "agent:read"],
-  member: ["agent:read"],
-  owner: ["agent:create", "agent:read"],
-} as const satisfies Readonly<
-  Record<OrganizationRole, readonly OrganizationPermission[]>
->;
+/** Authorization implementation that permits every Permission in focused tests. */
+export const allowAll = Service.of({
+  require: (organizationId) =>
+    Effect.succeed({ organizationId, role: "owner" as const }),
+});
 
-/** Authorization implementation that permits every permission in focused tests. */
-export const allowAll = Service.of({ require: () => Effect.void });
-
-/** Provides an Authorization that permits every permission in focused tests. */
+/** Provides an Authorization that permits every Permission in focused tests. */
 export const layerAllowAll = Layer.succeed(Service, allowAll);
 
 /** Authorization implementation with no authenticated Principal for focused tests. */

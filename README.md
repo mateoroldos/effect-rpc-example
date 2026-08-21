@@ -30,12 +30,12 @@ server → auth-better, core, rpc, database
 | Package | Responsibility |
 |---|---|
 | `packages/domain` | Pure shared vocabulary — branded domain types with no dependencies. |
-| `packages/auth-better` | Better Auth adapter for identity and Organization authorization. |
-| `packages/core` | Application services and the ports they depend on. |
+| `packages/auth-better` | Better Auth adapter for identity, Organization operations, and authorization. |
+| `packages/core` | Stable application services and ports, including OrganizationDirectory, Authorization, and OrganizationProvider. |
 | `packages/database` | PostgreSQL lifecycle and adapters implementing core ports. |
 | `packages/rpc` | Transport-independent RPC contracts; handlers live in `apps/server`. |
 | `apps/server` | Composition root — provides every Layer and launches the API process. |
-| `apps/web` | SvelteKit UI — remote functions call the typed Agents RPC server-side. |
+| `apps/web` | SvelteKit UI — remote functions call the typed application RPC server-side. |
 
 The composition root wires the graph in one place, and Effect memoizes shared
 infrastructure (database pool, config, clock) so it is built exactly once:
@@ -50,6 +50,8 @@ appLayer
 
 Svelte page (Portless-assigned port)
 └─ remote function ── Effect RPC client ── HTTP /rpc ── appLayer
+   ├─ AgentDirectory ── AgentStore (Postgres adapter)
+   └─ OrganizationDirectory ── Authorization + OrganizationProvider ── OrganizationBetterAuth
 ```
 
 ## Quick start
@@ -97,12 +99,58 @@ derived from the workspace id.
 | `apps/server/.env` | `APP_ENV`, auth secrets, email, `OTEL_*` | Bun (from the app's cwd) |
 | `apps/web/.env` | `APP_ENV`, `OTEL_*` | Vite / SvelteKit |
 
-Runtime locations are **derived in Portless development, explicit in production**.
-The server derives `DATABASE_URL`, `BETTER_AUTH_URL`, and `WEB_URL`; the web app
-derives `API_URL`. All use the workspace id, which defaults to the directory
-name; override it by exporting `DEV_INSTANCE`. Direct app development uses
-localhost URLs and requires `DATABASE_URL`. Production requires all four values.
-Deploy credentials are separate — see [`alchemy.env.example`](alchemy.env.example).
+Runtime locations are **derived in Portless development and from `APP_DOMAIN` in production**.
+The workspace id defaults to the directory name; override it by exporting
+`DEV_INSTANCE`. Direct server development requires `DATABASE_URL`. Production
+requires `APP_DOMAIN` in both deployables, `DATABASE_URL` in the API, and a
+production `BETTER_AUTH_SECRET`. Deploy credentials are separate — see
+[`alchemy.env.example`](alchemy.env.example).
+
+### Authentication topology
+
+The web and API are one trusted application boundary on sibling HTTPS origins:
+
+```text
+Browser  https://app.<APP_DOMAIN>
+  ├─ Better Auth identity HTTP ──────────────→ https://api.<APP_DOMAIN>
+  └─ SvelteKit remote function (SSR/BFF)
+       ├─ session HTTP + caller cookie ──────→ https://api.<APP_DOMAIN>
+       └─ application RPC + caller cookie ───→ https://api.<APP_DOMAIN>/rpc
+          ├─ Agent operations
+          └─ Organization, Member, and Invitation operations
+```
+
+Direct Better Auth HTTP is reserved for identity lifecycle: sign-in, sign-out,
+sign-up, session refresh, email verification, password recovery, and OAuth
+callbacks. Organization, Member, and Invitation operations cross typed
+application RPC into the stable core `OrganizationDirectory`. Server middleware
+uses `OrganizationBetterAuth` to provide request-scoped `Authorization` and
+`OrganizationProvider` capabilities.
+
+The API owns Better Auth session validation and Organization authorization. The
+web server never turns route or client state into identity; it forwards the
+current request credentials and lets the API decide. Server-side calls construct
+an allowlist containing the caller's `cookie`, the configured web `origin`, and
+generated trace context. They never forward the complete incoming header set.
+Outgoing RPC headers are scoped to the current Effect operation, not stored in
+the process-wide client Layer, so concurrent SSR requests cannot share sessions.
+
+`APP_DOMAIN=example.com` derives these values in both deployables:
+
+| Value | Derived setting |
+|---|---|
+| Browser origin | `https://app.example.com` |
+| API and Better Auth origin | `https://api.example.com` |
+| Better Auth trusted origin | `https://app.example.com` |
+| Session cookie domain | `example.com` |
+
+Production requirements:
+
+1. Set the same bare `APP_DOMAIN` in the web and API services; do not include a scheme or path.
+2. Serve both origins over HTTPS and route them only to their corresponding deployable.
+3. Store `BETTER_AUTH_SECRET` in the API secret store and keep it stable across deployments.
+4. Never log cookies, authorization headers, forwarded headers, or Better Auth payloads.
+5. If web and API stop sharing one trust boundary, replace cookie forwarding with an audience-scoped token exchange.
 
 Telemetry has one switch per app: `OTEL_EXPORTER_OTLP_ENDPOINT` set → export on,
 unset → console only (default). Locally, run `bun run telemetry:up` and uncomment

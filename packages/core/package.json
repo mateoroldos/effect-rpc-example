@@ -7,7 +7,9 @@
     "./agent-directory": "./src/agent-directory/index.ts",
     "./agent-directory/store": "./src/agent-directory/agent-store/index.ts",
     "./email": "./src/email/index.ts",
-    "./authorization": "./src/authorization/index.ts"
+    "./authorization": "./src/authorization/index.ts",
+    "./organization-directory": "./src/organization-directory/index.ts",
+    "./organization-directory/provider": "./src/organization-directory/organization-provider/index.ts"
   },
   "scripts": {
     "check-types": "tsc"

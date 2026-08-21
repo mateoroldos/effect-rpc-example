@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest";
-import { AuthorizationBetterAuth } from "@effect-template/auth-better/authorization";
 import { BetterAuthEmail } from "@effect-template/auth-better/better-auth-email";
 import { BetterAuthInstance } from "@effect-template/auth-better/better-auth-instance";
+import { OrganizationBetterAuth } from "@effect-template/auth-better/organization";
 // biome-ignore lint/performance/noNamespaceImport: Better Auth requires the complete generated schema module.
 import * as authSchema from "@effect-template/database/auth-schema";
 import { DatabasePostgres } from "@effect-template/database/postgres";
@@ -13,7 +13,7 @@ import { PostgresPool } from "../infra/postgres-pool/index.ts";
 import { acquireDisposableDatabaseUrl } from "../test/disposable-postgres.ts";
 
 describe("Better Auth database integration", () => {
-  it.effect("persists auth data and authorizes Organization permissions", () =>
+  it.effect("persists identity and provides Organization capabilities", () =>
     Effect.scoped(
       Effect.gen(function* () {
         const databaseUrl = yield* acquireDisposableDatabaseUrl;
@@ -50,7 +50,7 @@ describe("Better Auth database integration", () => {
           }).pipe(Layer.provide(betterAuthEmailLayer));
           const boundariesLayer = Layer.merge(
             instanceLayer,
-            AuthorizationBetterAuth.layerWithoutDependencies.pipe(
+            OrganizationBetterAuth.layerWithoutDependencies.pipe(
               Layer.provide(instanceLayer)
             )
           );
@@ -58,7 +58,7 @@ describe("Better Auth database integration", () => {
           const { auth } = yield* BetterAuthInstance.Service.pipe(
             Effect.provide(boundaries)
           );
-          const authorization = yield* AuthorizationBetterAuth.Service.pipe(
+          const organizations = yield* OrganizationBetterAuth.Service.pipe(
             Effect.provide(boundaries)
           );
 
@@ -134,24 +134,42 @@ describe("Better Auth database integration", () => {
           );
 
           const organizationId = OrganizationId.make(organization.id);
-          yield* authorization.require(
-            ownerHeaders,
+          const ownerCapabilities = organizations.forHeaders(ownerHeaders);
+          assert.isTrue(
+            (yield* ownerCapabilities.organizations.list).some(
+              (candidate) => candidate.id === organizationId
+            )
+          );
+          const visibleOrganization =
+            yield* ownerCapabilities.organizations.find(organizationId);
+          assert.strictEqual(
+            visibleOrganization.organization.id,
+            organizationId
+          );
+          assert.strictEqual(visibleOrganization.role, "owner");
+          assert.lengthOf(
+            yield* ownerCapabilities.organizations.listMembers(organizationId),
+            2
+          );
+
+          yield* ownerCapabilities.authorization.require(
             organizationId,
             "agent:create"
           );
-          yield* authorization.require(
-            memberHeaders,
+          const memberCapabilities = organizations.forHeaders(memberHeaders);
+          yield* memberCapabilities.authorization.require(
             organizationId,
             "agent:read"
           );
 
-          const forbidden = yield* authorization
-            .require(memberHeaders, organizationId, "agent:create")
+          const denied = yield* memberCapabilities.authorization
+            .require(organizationId, "agent:create")
             .pipe(Effect.flip);
-          assert.strictEqual(forbidden._tag, "Authorization.Forbidden");
+          assert.strictEqual(denied._tag, "Authorization.PermissionDenied");
 
-          const unauthenticated = yield* authorization
-            .require(new Headers(), organizationId, "agent:read")
+          const unauthenticated = yield* organizations
+            .forHeaders(new Headers())
+            .authorization.require(organizationId, "agent:read")
             .pipe(Effect.flip);
           assert.strictEqual(
             unauthenticated._tag,

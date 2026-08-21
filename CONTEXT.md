@@ -16,6 +16,10 @@ _Avoid_: Bot, Entity, Record
 A person whose identity is managed by Better Auth
 _Avoid_: Account, Identity
 
+**Email Address**:
+A parsed address used to identify or contact a User
+_Avoid_: Email, Recipient
+
 **Principal**:
 The authenticated User identity used to authorize an application operation
 _Avoid_: Session, Actor
@@ -27,6 +31,10 @@ _Avoid_: Tenant, Workspace, Team
 **Member**:
 A User's membership in one Organization
 _Avoid_: Membership, OrganizationUser
+
+**Invitation**:
+A request for a User identified by email to become a Member of one Organization
+_Avoid_: Invite, MembershipRequest
 
 **Organization Role**:
 A named set of Organization Permissions assigned to a Member
@@ -49,9 +57,9 @@ generic ones (`rules/no-vague-names.grit`): a class/interface/type named
 lint error.
 
 **Directory**:
-A service that owns a collection and the policy over it. Here, the registry of
-Agents — not a filesystem.
-_Avoid_: Registry, Manager, Repository
+A service that owns a collection and the policy over it. Here, the directories
+of Agents and Organizations — not filesystems.
+_Avoid_: Registry, Manager, Repository, Service
 
 **Store**:
 The persistence boundary a service depends on to remember its data. The Store

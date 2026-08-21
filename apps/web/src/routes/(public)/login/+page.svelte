@@ -16,6 +16,9 @@
   const emailVerified = $derived(
     page.url.searchParams.get("verified") === "true"
   );
+  const redirectTo = $derived(
+    sameSitePath(page.url.searchParams.get("redirectTo"), page.url.origin)
+  );
 
   let email = $state("");
   let password = $state("");
@@ -39,8 +42,18 @@
       return;
     }
 
-    await goto("/", { refreshAll: true });
+    await goto(redirectTo, { refreshAll: true });
   };
+
+  function sameSitePath(candidate: string | null, origin: string) {
+    if (candidate === null) {
+      return "/";
+    }
+    const target = new URL(candidate, origin);
+    return target.origin === origin
+      ? `${target.pathname}${target.search}${target.hash}`
+      : "/";
+  }
 </script>
 
 <svelte:head>

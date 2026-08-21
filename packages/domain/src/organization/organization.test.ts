@@ -5,6 +5,9 @@ import {
   OrganizationId,
   OrganizationName,
   OrganizationSlug,
+  organizationRoleAllows,
+  organizationRoleCanAssign,
+  permissionsByOrganizationRole,
 } from "./organization.ts";
 
 const parseOrganizationId = Schema.decodeUnknownResult(OrganizationId);
@@ -25,6 +28,23 @@ describe("Organization", () => {
       Result.getOrThrow(parseOrganizationName("  Acme  ")),
       "Acme"
     );
+  });
+
+  it("defines the complete Permission policy for every Role", () => {
+    assert.deepStrictEqual(permissionsByOrganizationRole.member, [
+      "agent:read",
+      "member:read",
+    ]);
+    assert.isTrue(organizationRoleAllows("admin", "member:invite"));
+    assert.isFalse(organizationRoleAllows("member", "agent:create"));
+    assert.isFalse(organizationRoleAllows("member", "member:invite"));
+  });
+
+  it("prevents Invitation Role escalation", () => {
+    assert.isTrue(organizationRoleCanAssign("owner", "admin"));
+    assert.isTrue(organizationRoleCanAssign("admin", "member"));
+    assert.isFalse(organizationRoleCanAssign("admin", "owner"));
+    assert.isFalse(organizationRoleCanAssign("member", "member"));
   });
 
   it.each(["", "UPPER", "two words", "-leading", "trailing-"])(

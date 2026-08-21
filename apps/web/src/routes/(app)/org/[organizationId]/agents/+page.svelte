@@ -1,9 +1,9 @@
 <script lang="ts">
   import AgentDirectory from "#lib/features/agents/agent-directory/agent-directory.svelte";
   import CreateAgentForm from "#lib/features/agents/create-agent-form.svelte";
-  import type { PageProps } from "./$types";
+  import { getOrganizationContext } from "#lib/features/organizations/organization-context.ts";
 
-  let { data }: PageProps = $props();
+  const active = getOrganizationContext();
 </script>
 
 <svelte:head>
@@ -23,7 +23,7 @@
   </header>
 
   <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
-    <AgentDirectory organizationId={data.organizationId} />
-    <CreateAgentForm organizationId={data.organizationId} />
+    <AgentDirectory organizationId={active.organization.id} />
+    <CreateAgentForm organizationId={active.organization.id} />
   </div>
 </main>

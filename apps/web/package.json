@@ -14,7 +14,8 @@
     "lint": "biome check src",
     "prepare": "svelte-kit sync || echo ''",
     "preview": "vite preview",
-    "start": "node build/index.js"
+    "start": "node build/index.js",
+    "sync": "svelte-kit sync"
   },
   "dependencies": {
     "@effect-template/domain": "workspace:*",

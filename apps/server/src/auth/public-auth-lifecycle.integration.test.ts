@@ -1,26 +1,40 @@
 import { NodeCrypto, NodeHttpServer } from "@effect/platform-node";
 import { assert, it } from "@effect/vitest";
+import { AgentDirectory } from "@effect-template/core/agent-directory";
 import { EmailSender } from "@effect-template/core/email";
+import { OrganizationDirectory } from "@effect-template/core/organization-directory";
+import { AgentStorePostgres } from "@effect-template/database/agents/postgres";
 import { DatabasePostgres } from "@effect-template/database/postgres";
 import { AgentName } from "@effect-template/domain/agent";
-import { OrganizationId } from "@effect-template/domain/organization";
-import { AgentsRpc } from "@effect-template/rpc/agents";
-import { Effect, Layer, Redacted, Schema } from "effect";
+import { EmailAddress } from "@effect-template/domain/email-address";
 import {
+  OrganizationName,
+  OrganizationSlug,
+} from "@effect-template/domain/organization";
+import { AppRpc } from "@effect-template/rpc/rpc";
+import { Effect, Layer, Redacted } from "effect";
+import {
+  FetchHttpClient,
   HttpClient,
   HttpClientRequest,
-  HttpClientResponse,
+  type HttpClientResponse,
 } from "effect/unstable/http";
 import { RpcClient, RpcSerialization } from "effect/unstable/rpc";
 import { httpServerLayer } from "../http/server.ts";
 import { effectDatabaseLayer } from "../infra/database.ts";
 import { PostgresPool } from "../infra/postgres-pool/index.ts";
-import { agentsHandlersLayerPostgres } from "../rpc/agents.ts";
+import { agentsHandlersLayer } from "../rpc/agents.ts";
+import { organizationsHandlersLayer } from "../rpc/organizations.ts";
 import { acquireDisposableDatabaseUrl } from "../test/disposable-postgres.ts";
 import { authLayer } from "./layer.ts";
 
-const OrganizationResponse = Schema.Struct({ id: OrganizationId });
-const InvitationResponse = Schema.Struct({ id: Schema.String });
+const rpcHandlersLayer = Layer.merge(
+  agentsHandlersLayer.pipe(
+    Layer.provide(AgentDirectory.layerWithoutDependencies),
+    Layer.provide(AgentStorePostgres.layer)
+  ),
+  organizationsHandlersLayer.pipe(Layer.provide(OrganizationDirectory.layer))
+);
 const apiBaseUrl = new URL("https://api.example.com");
 const webBaseUrl = new URL("https://app.example.com");
 
@@ -38,8 +52,8 @@ it.effect("public authentication and Organization lifecycle", () =>
             }),
         })
       );
-      const serverLayer = httpServerLayer("http://localhost:5173").pipe(
-        Layer.provide(agentsHandlersLayerPostgres),
+      const serverLayer = httpServerLayer(webBaseUrl.origin).pipe(
+        Layer.provide(rpcHandlersLayer),
         Layer.provide(
           authLayer({
             origins: {
@@ -90,34 +104,24 @@ it.effect("public authentication and Organization lifecycle", () =>
         );
         assert.strictEqual(session.status, 200);
 
-        const organizationResponse = yield* authRequest(
-          http,
-          "/organization/create",
-          { name: "Analytical Engines", slug: "analytical-engines" },
-          ownerCookie
-        );
-        assert.strictEqual(organizationResponse.status, 200);
-        const organization =
-          yield* HttpClientResponse.schemaBodyJson(OrganizationResponse)(
-            organizationResponse
-          );
-
-        const invitationResponse = yield* authRequest(
-          http,
-          "/organization/invite-member",
-          {
-            email: "grace@example.com",
-            organizationId: organization.id,
-            role: "member",
-          },
-          ownerCookie
-        );
-        assert.strictEqual(invitationResponse.status, 200);
+        const ownerClient = yield* makeRpcClient(ownerCookie);
+        const organization = yield* ownerClient["Organizations.Create"]({
+          name: OrganizationName.make("Analytical Engines"),
+          slug: OrganizationSlug.make("analytical-engines"),
+        });
+        yield* ownerClient["Members.Invite"]({
+          email: EmailAddress.make("grace@example.com"),
+          organizationId: organization.id,
+          role: "member",
+        });
         assert.lengthOf(sent, 2);
-        const invitation =
-          yield* HttpClientResponse.schemaBodyJson(InvitationResponse)(
-            invitationResponse
-          );
+        const people = yield* ownerClient["Members.List"]({
+          organizationId: organization.id,
+        });
+        const invitation = people.invitations.find(
+          ({ email }) => email === "grace@example.com"
+        );
+        assert.isDefined(invitation);
 
         const graceSignup = yield* authRequest(http, "/sign-up/email", {
           callbackURL: `${webBaseUrl.origin}/login?verified=true`,
@@ -133,36 +137,37 @@ it.effect("public authentication and Organization lifecycle", () =>
           "grace@example.com",
           "correct-horse-battery-staple"
         );
-        const accepted = yield* authRequest(
-          http,
-          "/organization/accept-invitation",
-          { invitationId: invitation.id },
-          graceCookie
-        );
-        assert.strictEqual(accepted.status, 200);
+        const graceClient = yield* makeRpcClient(graceCookie);
+        yield* graceClient["Invitations.Accept"]({
+          invitationId: invitation.id,
+        });
 
-        const rpcProtocolLayer = RpcClient.layerProtocolHttp({
-          transformClient: HttpClient.mapRequest((request) =>
-            request.pipe(
-              HttpClientRequest.appendUrl("/rpc"),
-              HttpClientRequest.setHeader("cookie", ownerCookie)
-            )
-          ),
-          url: "",
-        }).pipe(Layer.provide(RpcSerialization.layerNdjson));
-        const rpcContext = yield* Layer.build(rpcProtocolLayer);
-        const created = yield* Effect.gen(function* () {
-          const client = yield* RpcClient.make(AgentsRpc.group);
-          return yield* client["Agents.Create"]({
-            name: AgentName.make("Ada"),
-            organizationId: organization.id,
-          });
-        }).pipe(Effect.provide(rpcContext));
+        const created = yield* ownerClient["Agents.Create"]({
+          name: AgentName.make("Ada"),
+          organizationId: organization.id,
+        });
         assert.strictEqual(created.organizationId, organization.id);
       }).pipe(Effect.provide(serverContext));
     })
   )
 );
+
+const makeRpcClient = Effect.fn("PublicAuthLifecycle.makeRpcClient")(function* (
+  cookie: string
+) {
+  const protocol = yield* Layer.build(
+    RpcClient.layerProtocolHttp({
+      transformClient: HttpClient.mapRequest((request) =>
+        request.pipe(
+          HttpClientRequest.appendUrl("/rpc"),
+          HttpClientRequest.setHeader("cookie", cookie)
+        )
+      ),
+      url: "",
+    }).pipe(Layer.provide(RpcSerialization.layerNdjson))
+  );
+  return yield* RpcClient.make(AppRpc.group).pipe(Effect.provide(protocol));
+});
 
 const authRequest = (
   http: HttpClient.HttpClient,
@@ -194,13 +199,18 @@ const verifyEmail = (
     const verificationUrl = message.text.split("\n\n").at(-1);
     assert.isDefined(verificationUrl);
     const url = new URL(verificationUrl);
-    yield* authRequest(
+    const response = yield* authRequest(
       http,
       `${url.pathname.replace("/api/auth", "")}${url.search}`,
       undefined,
       undefined,
       "GET"
-    ).pipe(Effect.catch(() => Effect.void));
+    ).pipe(
+      Effect.provideService(FetchHttpClient.RequestInit, {
+        redirect: "manual",
+      })
+    );
+    assert.strictEqual(response.status, 302);
   });
 
 const signIn = (http: HttpClient.HttpClient, email: string, password: string) =>

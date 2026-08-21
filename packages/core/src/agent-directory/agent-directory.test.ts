@@ -29,10 +29,11 @@ const applicationLayer = Layer.merge(
 const deniedAuthorizationLayer = Layer.succeed(
   Authorization.Service,
   Authorization.Service.of({
-    require: (requestedOrganizationId) =>
+    require: (requestedOrganizationId, permission) =>
       Effect.fail(
-        new Authorization.Forbidden({
+        new Authorization.PermissionDenied({
           organizationId: requestedOrganizationId,
+          permission,
         })
       ),
   })
@@ -54,10 +55,14 @@ const readOnlyApplicationLayer = Layer.merge(
     Authorization.Service.of({
       require: (requestedOrganizationId, permission) =>
         permission === "agent:read"
-          ? Effect.void
+          ? Effect.succeed({
+              organizationId: requestedOrganizationId,
+              role: "member" as const,
+            })
           : Effect.fail(
-              new Authorization.Forbidden({
+              new Authorization.PermissionDenied({
                 organizationId: requestedOrganizationId,
+                permission,
               })
             ),
     })
@@ -124,7 +129,7 @@ describe("AgentDirectory", () => {
         const error = yield* directory
           .create(organizationId, { name: AgentName.make("Ada") })
           .pipe(Effect.flip);
-        assert.strictEqual(error._tag, "Authorization.Forbidden");
+        assert.strictEqual(error._tag, "Authorization.PermissionDenied");
       })
     );
   });
@@ -137,7 +142,7 @@ describe("AgentDirectory", () => {
           .create(organizationId, { name: AgentName.make("Ada") })
           .pipe(Effect.flip);
         assert.deepInclude(error, {
-          _tag: "Authorization.Forbidden",
+          _tag: "Authorization.PermissionDenied",
           organizationId,
         });
       })
@@ -153,7 +158,7 @@ describe("AgentDirectory", () => {
           )
           .pipe(Effect.flip);
         assert.deepInclude(error, {
-          _tag: "Authorization.Forbidden",
+          _tag: "Authorization.PermissionDenied",
           organizationId,
         });
       })
@@ -164,7 +169,7 @@ describe("AgentDirectory", () => {
         const directory = yield* AgentDirectory.Service;
         const error = yield* directory.list(organizationId).pipe(Effect.flip);
         assert.deepInclude(error, {
-          _tag: "Authorization.Forbidden",
+          _tag: "Authorization.PermissionDenied",
           organizationId,
         });
       })
